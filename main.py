@@ -3,6 +3,7 @@
 Entrypoint del gioco 'I am a Router'.
 Inizializza Pygame, carica la configurazione, avvia il ciclo principale e gestisce la schermata iniziale.
 """
+import os
 import pygame
 from config import Config
 from ui import GameUI
@@ -11,6 +12,10 @@ from router_grid import RouterGrid
 from api import APIDriver
 from glossary import Glossary
 from audio import AudioManager
+
+# Forza il driver audio dummy su Linux/WSL/ambienti senza audio
+if not os.environ.get("SDL_AUDIODRIVER"):
+    os.environ["SDL_AUDIODRIVER"] = "dummy"
 
 
 def main():
@@ -52,6 +57,7 @@ def main():
         clock.tick(config.FPS)
 
     pygame.quit()
+
 
 if __name__ == "__main__":
     main()
