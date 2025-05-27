@@ -1,4 +1,4 @@
-## 6. UI & Grafica
+# 6. UI e Grafica
 
 - **Gioco 2D, schermo intero, stile retro gaming pixel-art 16-bit**
 - **Palette colori:** Pastello (esempi: azzurro chiaro, rosa, lilla, verde menta, giallo pallido)
@@ -10,6 +10,8 @@
 - ID router solo a terminale per debug
 - Glossario accessibile dal menu e in-game
 - **Un router di cui non è stato fatto il claim viene visualizzato di colore grigio nella UI.**
+- La colorazione e lo stato claim dei router sono determinati dal confronto tra il nomegiocatore locale e quello letto dalla description della loopback.
+- Un router con description valorizzata ma nomegiocatore diverso da quello locale appare sempre come non claimato (grigio) e non può essere gestito dal giocatore locale.
 
 ### 6.1 Dettaglio: Regole di disegno di un router nella UI
 
@@ -48,6 +50,7 @@ Ogni router nella UI viene rappresentato secondo queste regole grafiche:
   - Box rettangolare adattivo sempre visibile sotto ogni router, stile pixel-art (bordi doppi, colori saturi), con bordo bianco e sfondo scuro.
   - Testo hostname sempre centrato, outline nero, e mai troncato.
   - Il box mostra sempre il valore aggiornato dal polling API, oppure '?' se non disponibile, senza ritardi o desincronizzazioni.
+  - L'hostname mostrato nella UI è sempre quello letto via polling API dal campo description della loopback, oppure '?' se non disponibile. La sincronizzazione è in tempo reale.
 - **Feedback visivo:**
   - Quando un router viene claimato, il colore del cerchio cambia immediatamente e viene mostrato un messaggio di conferma in stile pixel-art.
   - Quando un’interfaccia viene attivata/disattivata, il colore della freccia cambia in tempo reale.
@@ -60,6 +63,7 @@ Ogni router nella UI viene rappresentato secondo queste regole grafiche:
   - Gli ID (global_id, local_id, group_id) non sono visibili nella UI, ma vengono stampati a terminale per debug quando si seleziona il router.
 - **Posizionamento:**
   - Il router è centrato nella cella della griglia, con padding per evitare sovrapposizioni.
+- **Colore router:** Un router non claimato (cioè non claimato dal giocatore locale) viene sempre visualizzato di colore grigio (`config.GRAY`) nella UI, indipendentemente dal contenuto del campo hostname/description. Solo i router effettivamente claimati dal giocatore locale sono colorati con il colore del player.
 - **Legenda:**
   - In basso nella UI NON è più presente una legenda: tutte le regole di colori e simboli sono documentate solo in questo file e non più mostrate in-game.
   - Non sono più presenti riferimenti o colori relativi ad altri giocatori.
@@ -75,6 +79,7 @@ Ogni router nella UI viene rappresentato secondo queste regole grafiche:
 - La UI mostra solo il numero di token e il timer del giocatore locale. I token degli altri giocatori non sono mai visualizzati.
 - Ogni giocatore vede e gestisce solo i propri token nella UI. I token degli altri giocatori non sono più visibili o mostrati.
 - La barra superiore visualizza solo i token e il timer del giocatore corrente.
+- La UI mostra solo i token e il timer del giocatore locale. I token degli altri giocatori non sono mai visibili.
 - Un router è considerato claimato dal giocatore locale solo se il campo description della sua interfaccia loopback è nel formato `nomegiocatore_hostnameRouterVirtuale` e il `nomegiocatore` coincide esattamente con quello inserito dal giocatore locale. Se il nomegiocatore nella description è diverso dal nome inserito dal giocatore locale, il router è considerato sempre non claimato (colore grigio nella UI, azioni non permesse).
 - Il claim non è più gestito solo localmente, ma sincronizzato tramite la description della loopback letta via API.
 - La colorazione e lo stato claim dei router sono determinati dal confronto tra il nomegiocatore locale e quello letto dalla description della loopback.
@@ -93,51 +98,139 @@ Ogni router nella UI viene rappresentato secondo queste regole grafiche:
   - Rimossi tutti gli effetti moderni: niente antialias, niente glow, niente gradienti, niente glassmorphism, niente font sans-serif moderno, niente ombre soft.
   - Nessuno sfondo datacenter: lo sfondo è ora un colore pieno coerente con la palette pixel-art.
 
-**Ultimo aggiornamento:** 27/05/2025
+- **Schema ASCII di un router nella UI:**
 
-### Esempio di mockup ASCII della griglia e legenda UI
+  Esempio di rappresentazione di un router con le frecce delle interfacce e il box hostname:
+
+  ```
+      ↑
+    ┌───┐
+←  │  ●  │  →
+    └───┘
+      ↓
+     [hostname]
+  ```
+
+  Dove:
+  - Il cerchio pieno (●) rappresenta il router.
+  - Le frecce (↑, ↓, ←, →) rappresentano le interfacce nord, sud, ovest, est.
+  - Il box rettangolare sotto il router mostra l'hostname.
+  - Il colore del cerchio indica lo stato claim (grigio = non claimato, colore player = claimato dal giocatore locale).
+  - Le frecce sono colorate (verde = up, rosso = down, giallo = non configurata, giallo evidenziato all'hover).
+
+  Esempio con tutte le frecce attive (up):
+
+  ```
+      ↑
+    ┌───┐
+←  │  ●  │  →
+    └───┘
+      ↓
+     [Router1]
+  ```
+
+  Esempio con alcune interfacce down (rosse):
+
+  ```
+      ↑
+    ┌───┐
+X  │  ●  │  →
+    └───┘
+      ↓
+     [Router2]
+  ```
+  (dove X indica una freccia rossa, cioè interfaccia down)
+
+  Nota: la rappresentazione grafica reale è in pixel-art, ma lo schema ASCII aiuta a comprendere la disposizione degli elementi nella UI.
+
+---
+
+## 8.1 Mockup e schermate ASCII della UI
+
+Di seguito alcuni esempi di schermate ASCII che illustrano la disposizione degli elementi principali della UI, lo stato dei router, la visualizzazione dei token, del timer, del nome giocatore e della legenda.
+
+### Schermata principale: griglia router 4x4 (esempio semplificato)
 
 ```
-Legenda: ● grigio = router libero   ● blu = tuo router   ● arancione = router claimato da altri
-         ↑/→/↓/← verdi = interfaccia up   rosse = interfaccia down   gialle = hover/non configurata
+╔════════════════════════════════════════════════════════════════════╗
+║  Giocatore: Alice      Token: ●●●●   Timer: 08s                  ║
+╠════════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║   [R1]        [R2]        [R3]        [R4]                      ║
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║   [R5]        [R6]        [R7]        [R8]                      ║
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║   [R9]       [R10]       [R11]       [R12]                      ║
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║  [R13]      [R14]      [R15]      [R16]                         ║
+║                                                                  ║
+╚════════════════════════════════════════════════════════════════════╝
+Legenda: ● grigio = router non claimato, ● blu = router claimato dal giocatore locale
+         ↑/→/↓/← verdi = interfaccia up, rosse = interfaccia down, gialle = non configurata
          [Rx] = hostname del router (o '?' se non disponibile)
 
-      ↑         ↑         ↑         ↑
-    ┌───┐    ┌───┐    ┌───┐    ┌───┐
-←  │ ● │  →← │ ● │  →← │ ● │  →← │ ● │  →
-    └───┘    └───┘    └───┘    └───┘
-      ↓         ↓         ↓         ↓
-   [Router1] [PlayerA_R2] [PlayerB_R3] [Router4]
+```
 
-      ↑         ↑         ↑         ↑
-    ┌───┐    ┌───┐    ┌───┐    ┌───┐
-←  │ ● │  →← │ ● │  →← │ ● │  →← │ ● │  →
-    └───┘    └───┘    └───┘    └───┘
-      ↓         ↓         ↓         ↓
-   [Router5] [PlayerA_R6] [PlayerB_R7] [Router8]
+### Esempio di router claimato e interfacce up/down
 
-Legenda colori:
-- ● grigio: router non claimato
-- ● blu: router claimato dal giocatore locale
-- ● arancione: router claimato da altro giocatore
-- ↑/→/↓/← verdi: interfaccia up
-- ↑/→/↓/← rosse: interfaccia down
-- **↑/→/↓/← gialle: hover/interfaccia non configurata**
+```
+      ↑
+    ┌───┐
+X  │ ● │  →
+    └───┘
+      ↓
+   [Router2]
+```
+Dove:
+- ● blu = router claimato dal giocatore locale
+- X = freccia rossa (interfaccia ovest down)
+- → = freccia verde (interfaccia est up)
+- ↑, ↓ = altre interfacce (colore variabile)
+- [Router2] = hostname letto via API
 
-Esempio dettagliato di router:
+### Barra superiore con nome giocatore troncato
 
+```
+Giocatore: SuperLongNa...   Token: ●●●   Timer: 04s
+```
+
+### Legenda in basso
+
+```
+Legenda: ● grigio = router non claimato, ● blu = router claimato dal giocatore locale
+         ↑/→/↓/← verdi = interfaccia up, rosse = interfaccia down, gialle = non configurata
+         [Rx] = hostname del router (o '?' se non disponibile)
+```
+
+### Esempio di router con hostname mancante
+
+```
       ↑
     ┌───┐
 ←  │ ● │  →
     └───┘
       ↓
-   [PlayerA_R2]
-
-- In questo esempio:
-  - Il router centrale è claimato dal player locale (blu)
-  - L'interfaccia nord è up (freccia verde)
-  - L'interfaccia ovest è down (freccia rossa)
-  - L'interfaccia est è up (freccia verde)
-  - L'interfaccia sud è down (freccia rossa)
-  - Sotto il router è visibile l'hostname aggiornato
+     [?]
 ```
+
+---

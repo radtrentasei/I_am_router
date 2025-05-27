@@ -18,6 +18,7 @@ Questo documento raccoglie tutte le principali scelte di sviluppo software adott
 - Il claim di un router si basa sul parsing del campo `description` della loopback: solo se il nomegiocatore coincide con quello locale il router risulta claimato dal giocatore.
 - I router claimati da altri giocatori sono visualizzati in arancione, quelli liberi in grigio, quelli propri nel colore player.
 - L'hostname viene aggiornato solo se il campo description è presente e non vuoto, altrimenti viene mostrato `?`.
+- **Claim router:** Un router è considerato claimato dal giocatore locale solo se il campo description della sua interfaccia loopback è nel formato `nomegiocatore_hostnameRouterVirtuale` **e il `nomegiocatore` coincide esattamente con quello inserito dal giocatore locale**. In tutti gli altri casi (description mancante, vuota, o nomegiocatore diverso), il router è considerato non claimato dal client locale.
 
 ## 4. Interfacce e VLAN
 - Le frecce delle interfacce (N/S/E/W) sono disegnate **solo se la VLAN è configurata** (cioè esiste un link logico tra router).

@@ -1,4 +1,4 @@
-## 13. Requisiti di Stile e Qualità del Codice
+# 10. Requisiti di Stile e Qualità del Codice
 
 - Codice abbondantemente commentato: ogni funzione, classe, modulo e blocco logico deve essere documentato tramite commenti e docstring, per facilitare la comprensione e l’apprendimento.
 - Codice pensato come materiale didattico: ogni concetto implementato, pattern o soluzione deve essere spiegato.

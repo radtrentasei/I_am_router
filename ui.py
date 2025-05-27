@@ -60,9 +60,14 @@ class GameUI:
         self.grid.update_from_api()
         self.grid.update_tokens()
 
+    def _draw_background(self):
+        # Sfondo rimosso: nessun disegno, funzione vuota
+        pass
+
     def render(self):
         # Sfondo base
         self.screen.fill(self.config.BACKGROUND)
+        self._draw_background()
         # Aggiorna stato router/interfacce da API ogni frame per riflettere cambi in tempo reale
         self.grid.update_from_api()
         if self.state == "splash":
@@ -463,10 +468,29 @@ class GameUI:
         step = self.glossary.tutorial_steps[self.glossary.current_step]
         text = self.big_font.render(f"Tutorial - Step {self.glossary.current_step+1}/{len(self.glossary.tutorial_steps)}", True, (30,30,30))
         self.screen.blit(text, (x+20, y+20))
-        # Testo multilinea
-        lines = step.split(". ")
+        # Word wrap del testo step
+        max_width = w - 40
+        font = self.font
+        def wrap_text(text, font, max_width):
+            words = text.split()
+            lines = []
+            current = ""
+            for word in words:
+                test = current + (" " if current else "") + word
+                if font.size(test)[0] <= max_width:
+                    current = test
+                else:
+                    if current:
+                        lines.append(current)
+                    current = word
+            if current:
+                lines.append(current)
+            return lines
+        lines = []
+        for part in step.split(". "):
+            lines.extend(wrap_text(part, font, max_width))
         for i, line in enumerate(lines):
-            t = self.font.render(line, True, (30,30,30))
+            t = font.render(line, True, (30,30,30))
             self.screen.blit(t, (x+20, y+80+i*32))
         # Pulsanti Avanti/Indietro
         btn_w, btn_h = 120, 40
@@ -583,6 +607,35 @@ class GameUI:
                         elif i == 3:
                             self._show_credits()
                         return
+            return
+        if self.state == "tutorial":
+            # Gestione click sui pulsanti Avanti/Indietro/Ripeti step
+            w = 700
+            h = 220
+            x = self.config.WIDTH//2 - w//2
+            y = self.config.HEIGHT//2 - h//2
+            btn_w, btn_h = 120, 40
+            btn_y = y+h-60
+            btn_prev = pygame.Rect(x+20, btn_y, btn_w, btn_h)
+            btn_next = pygame.Rect(x+w-20-btn_w, btn_y, btn_w, btn_h)
+            btn_repeat = pygame.Rect(self.config.WIDTH//2-60, y+h-60, 120, 40)
+            mx, my = pos
+            if btn_prev.collidepoint(mx, my):
+                if self.glossary.current_step > 0:
+                    self.glossary.current_step -= 1
+                return
+            if btn_next.collidepoint(mx, my):
+                if self.glossary.current_step < len(self.glossary.tutorial_steps)-1:
+                    self.glossary.current_step += 1
+                return
+            if btn_repeat.collidepoint(mx, my):
+                # Logica per ripetere lo step: resetta eventuale stato simulato
+                if hasattr(self.glossary, 'reset_tutorial_step'):
+                    self.glossary.reset_tutorial_step(self.glossary.current_step)
+                return
+            # Click fuori dai pulsanti: chiudi tutorial
+            self.show_tutorial = False
+            self.state = "menu"
             return
         if self.state == "level":
             if button == 1:

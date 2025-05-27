@@ -1,4 +1,4 @@
-## 3. Target e Obiettivi
+# 3. Target e Obiettivi
 
 - Ragazzi tra i 12 e i 15 anni interessati a tecnologia e informatica
 - Studenti avanzati di networking
