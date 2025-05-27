@@ -1,6 +1,6 @@
 ## 6. UI & Grafica
 
-- **Gioco 2D, schermo intero, stile retro gaming pixel-art**
+- **Gioco 2D, schermo intero, stile retro gaming pixel-art 16-bit**
 - **Palette colori:** Pastello (esempi: azzurro chiaro, rosa, lilla, verde menta, giallo pallido)
 - UI adattiva, leggibile, centrata, senza overflow
 - Visualizzazione dello stato in tempo reale tramite letture dai dispositivi
@@ -16,19 +16,19 @@
 Ogni router nella UI viene rappresentato secondo queste regole grafiche:
 
 - **Forma base:**
-  - Cerchio pieno, dimensione adattiva in base alla griglia e alla risoluzione.
+  - Cerchio pieno, stile pixel-art, dimensione adattiva in base alla griglia e alla risoluzione.
   - Colore:
     - Grigio (libero, non claimato; ovvero nessun giocatore ha ancora effettuato il claim sul router)
     - Blu (claimato da un giocatore, colore del giocatore)
-    - Bordo giallo spesso 3 pixel se router obiettivo già claimato
+    - Bordo giallo spesso 3 pixel se router obiettivo già claimato, in pixel-art (doppio bordo)
 - **Interfacce:**
-  - Quattro frecce spesse (5px) orientate verso nord, sud, est, ovest, visibili **solo se la VLAN corrispondente è configurata** (cioè esiste un link logico tra router).
+  - Quattro frecce spesse (5px), sprite pixel-art, orientate verso nord, sud, est, ovest, visibili **solo se la VLAN corrispondente è configurata** (cioè esiste un link logico tra router) **e solo se il router adiacente in quella direzione è effettivamente disegnato nella griglia**.
   - Le frecce sono disegnate **all'interno** del cerchio del router, puntando dal bordo verso il centro.
   - Colore frecce:
     - Verde (interfaccia up)
     - Rosso (interfaccia down)
     - **Giallo (hover su interfaccia: quando il mouse passa sopra una freccia, questa viene evidenziata in giallo, indipendentemente dallo stato up/down)**
-  - Se la VLAN non è configurata, la freccia non viene disegnata (nessuna interfaccia visibile in quella direzione).
+  - Se la VLAN non è configurata, o il router adiacente non è presente nella griglia, la freccia non viene disegnata (nessuna interfaccia visibile in quella direzione).
   - Le frecce sono disegnate in modo da non sovrapporsi al cerchio del router.
 - **Link attivi:**
   - Linee tratteggiate tra i router con neighborship attiva, colore verde.
@@ -45,14 +45,14 @@ Ogni router nella UI viene rappresentato secondo queste regole grafiche:
     - Verde se l'interfaccia è attiva (up, cioè 'admin up' secondo lo stato appreso dalla chiamata API ricorrente)
     - Rosso se l'interfaccia è inattiva (down, cioè 'admin down' secondo lo stato appreso dalla chiamata API ricorrente)
 - **Hostname:**
-  - Box rettangolare adattivo sempre visibile sotto ogni router, con bordo bianco e sfondo scuro.
-  - Testo hostname sempre centrato e mai troncato.
+  - Box rettangolare adattivo sempre visibile sotto ogni router, stile pixel-art (bordi doppi, colori saturi), con bordo bianco e sfondo scuro.
+  - Testo hostname sempre centrato, outline nero, e mai troncato.
   - Il box mostra sempre il valore aggiornato dal polling API, oppure '?' se non disponibile, senza ritardi o desincronizzazioni.
 - **Feedback visivo:**
-  - Quando un router viene claimato, il colore del cerchio cambia immediatamente e viene mostrato un messaggio di conferma.
+  - Quando un router viene claimato, il colore del cerchio cambia immediatamente e viene mostrato un messaggio di conferma in stile pixel-art.
   - Quando un’interfaccia viene attivata/disattivata, il colore della freccia cambia in tempo reale.
 - **Hover e click:**
-  - Al passaggio del mouse su un router, il suo colore di sfondo diventa leggermente più chiaro per indicare che è selezionato.
+  - Al passaggio del mouse su un router, il suo colore di sfondo diventa leggermente più chiaro per indicare che è selezionato, con effetto pixel-art (nessun glow/ombra soft).
   - Al click su un router:
     - Se il router non è claimato, viene avviata la procedura di claim.
     - Se il router è già claimato dal giocatore locale, il click non mostra più la finestra informativa (popup) ma non fa nulla (o in futuro potrà attivare altre azioni contestuali).
@@ -61,10 +61,7 @@ Ogni router nella UI viene rappresentato secondo queste regole grafiche:
 - **Posizionamento:**
   - Il router è centrato nella cella della griglia, con padding per evitare sovrapposizioni.
 - **Legenda:**
-  - In basso nella UI è sempre presente una legenda che spiega i colori e i simboli.
-  - La legenda mostra solo:
-    - Grigio: router non claimato
-    - Colore player: router claimato dal giocatore locale
+  - In basso nella UI NON è più presente una legenda: tutte le regole di colori e simboli sono documentate solo in questo file e non più mostrate in-game.
   - Non sono più presenti riferimenti o colori relativi ad altri giocatori.
   - I router claimati da altri giocatori (cioè con claimed_by_name valorizzato e diverso dal player locale) sono visualizzati in **arancione** nella griglia.
   - I router claimati dal giocatore locale sono colorati secondo il colore del player.
@@ -86,6 +83,17 @@ Ogni router nella UI viene rappresentato secondo queste regole grafiche:
 - La logica di estrazione hostname è robusta rispetto a dati assenti o vuoti nelle risposte API: il client imposta sempre l'hostname a '?' se l' interfaccia Loopback{group_id} non è presente o il campo description è vuoto.
 - L'hostname viene aggiornato solo se il campo description è presente e non vuoto.
 - Il nome del giocatore locale viene visualizzato nella UI sopra i token, in alto a sinistra, e viene troncato con '...' se troppo lungo per lo spazio disponibile.
+- La legenda dei colori e simboli NON è più presente nella schermata di gioco. Tutte le informazioni sui colori e simboli sono ora documentate solo in questo file e non più mostrate in-game.
+- Le frecce delle interfacce (N/S/E/W) sono disegnate SOLO se la VLAN è configurata e il router adiacente è presente nella griglia, come sprite pixel-art.
+- Quando il mouse passa sopra una freccia/interfaccia, la freccia viene colorata di giallo (200,200,0) indipendentemente dallo stato up/down, con effetto pixel-art.
+- La logica di hover e hit detection delle frecce è identica a quella di disegno, garantendo coerenza visiva e funzionale.
+- La schermata di gioco è ora più pulita, senza legenda, come da ultime specifiche.
+- L'interfaccia grafica è stata aggiornata:
+  - Tutti gli elementi (router, frecce, box, menu, popup, feedback, input, splash) sono ora sprite o forme in pixel-art 16-bit, con bordi doppi, dithering, ombre a gradini, colori saturi, outline testo.
+  - Rimossi tutti gli effetti moderni: niente antialias, niente glow, niente gradienti, niente glassmorphism, niente font sans-serif moderno, niente ombre soft.
+  - Nessuno sfondo datacenter: lo sfondo è ora un colore pieno coerente con la palette pixel-art.
+
+**Ultimo aggiornamento:** 27/05/2025
 
 ### Esempio di mockup ASCII della griglia e legenda UI
 

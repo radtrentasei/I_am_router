@@ -3,6 +3,7 @@
 Rendering grafico, gestione pulsanti, popup, feedback visivi.
 """
 import pygame
+import pygame.gfxdraw
 import math
 
 ARROW_SIZE = 32
@@ -60,6 +61,8 @@ class GameUI:
         self.grid.update_tokens()
 
     def render(self):
+        # Sfondo base
+        self.screen.fill(self.config.BACKGROUND)
         # Aggiorna stato router/interfacce da API ogni frame per riflettere cambi in tempo reale
         self.grid.update_from_api()
         if self.state == "splash":
@@ -74,10 +77,8 @@ class GameUI:
         if self.state == "name":
             self._draw_name_input()
             return
-        self.screen.fill(self.config.BACKGROUND)
         self._draw_grid()
         self._draw_links()
-        self._draw_legend()
         self._draw_tokens()
         self._draw_feedback()
         if self.popup:
@@ -93,62 +94,85 @@ class GameUI:
 
     def _draw_splash(self):
         self.screen.fill(self.config.BACKGROUND)
-        title = self.big_font.render("I am a Router", True, (30,30,30))
+        # Titolo pixelart: effetto outline e ombra
+        title = self.big_font.render("I am a Router", True, (255,255,255))
+        for dx, dy in [(-2,0),(2,0),(0,-2),(0,2)]:
+            self.screen.blit(self.big_font.render("I am a Router", True, (30,30,30)), (self.config.WIDTH//2-title.get_width()//2+dx, 220+dy))
         self.screen.blit(title, (self.config.WIDTH//2-title.get_width()//2, 220))
-        msg = self.font.render("Premi SPAZIO per continuare", True, (80,80,80))
-        self.screen.blit(msg, (self.config.WIDTH//2-msg.get_width()//2, 340))
+        # Box pixelart per messaggio
+        msg = self.font.render("Premi SPAZIO per continuare", True, (255,255,255))
+        box = pygame.Rect(self.config.WIDTH//2-msg.get_width()//2-16, 340, msg.get_width()+32, 48)
+        pygame.draw.rect(self.screen, (40,40,60), box)
+        pygame.draw.rect(self.screen, (255,255,255), box, 2)
+        pygame.draw.rect(self.screen, (30,30,30), box, 1)
+        self.screen.blit(msg, (self.config.WIDTH//2-msg.get_width()//2, 340+12))
 
     def _draw_menu(self):
         self.screen.fill(self.config.BACKGROUND)
-        title = self.big_font.render("I am a Router", True, (30,30,30))
+        # Titolo pixelart
+        title = self.big_font.render("I am a Router", True, (255,255,255))
+        for dx, dy in [(-2,0),(2,0),(0,-2),(0,2)]:
+            self.screen.blit(self.big_font.render("I am a Router", True, (30,30,30)), (self.config.WIDTH//2-title.get_width()//2+dx, 100+dy))
         self.screen.blit(title, (self.config.WIDTH//2-title.get_width()//2, 100))
-        # Pulsanti menu: Tutorial, Play, Glossario, Credits
+        # Pulsanti pixelart
         btn_w, btn_h = 320, 60
         btn_x = self.config.WIDTH//2 - btn_w//2
         btn_ys = [220, 310, 400, 490]
         labels = ["Tutorial", "Play the game", "Glossario", "Credits"]
-        colors = [(200,200,255), (200,255,200), (255,240,180), (220,220,220)]
+        colors = [(60,60,120), (60,120,60), (120,100,40), (80,80,80)]
         for i, (y, label, col) in enumerate(zip(btn_ys, labels, colors)):
-            pygame.draw.rect(self.screen, col, (btn_x, y, btn_w, btn_h), border_radius=12)
-            t = self.font.render(label, True, (30,30,30))
+            box = pygame.Rect(btn_x, y, btn_w, btn_h)
+            pygame.draw.rect(self.screen, col, box)
+            pygame.draw.rect(self.screen, (255,255,255), box, 2)
+            pygame.draw.rect(self.screen, (30,30,30), box, 1)
+            t = self.font.render(label, True, (255,255,255))
             self.screen.blit(t, (btn_x+btn_w//2-t.get_width()//2, y+btn_h//2-t.get_height()//2))
-        # Evidenziazione hover
+        # Evidenziazione hover pixelart
         mx, my = pygame.mouse.get_pos()
         for i, y in enumerate(btn_ys):
             if btn_x <= mx <= btn_x+btn_w and y <= my <= y+btn_h:
-                pygame.draw.rect(self.screen, (120,120,255), (btn_x, y, btn_w, btn_h), 4, border_radius=12)
+                pygame.draw.rect(self.screen, (255,255,0), (btn_x, y, btn_w, btn_h), 3)
 
     def _draw_level_select(self):
         self.screen.fill(self.config.BACKGROUND)
-        title = self.big_font.render("Seleziona livello", True, (30,30,30))
+        title = self.big_font.render("Seleziona livello", True, (255,255,255))
+        for dx, dy in [(-2,0),(2,0),(0,-2),(0,2)]:
+            self.screen.blit(self.big_font.render("Seleziona livello", True, (30,30,30)), (self.config.WIDTH//2-title.get_width()//2+dx, 120+dy))
         self.screen.blit(title, (self.config.WIDTH//2-title.get_width()//2, 120))
         btn_w, btn_h = 260, 60
         btn_x = self.config.WIDTH//2 - btn_w//2
         btn_ys = [240, 320, 400, 480]
         labels = ["Facile (2x2)", "Medio (3x3)", "Difficile (4x4)", "Custom"]
         for i, (y, label) in enumerate(zip(btn_ys, labels)):
-            pygame.draw.rect(self.screen, (220,240,255), (btn_x, y, btn_w, btn_h), border_radius=12)
-            t = self.font.render(label, True, (30,30,30))
+            box = pygame.Rect(btn_x, y, btn_w, btn_h)
+            pygame.draw.rect(self.screen, (60,60,120), box)
+            pygame.draw.rect(self.screen, (255,255,255), box, 2)
+            pygame.draw.rect(self.screen, (30,30,30), box, 1)
+            t = self.font.render(label, True, (255,255,255))
             self.screen.blit(t, (btn_x+btn_w//2-t.get_width()//2, y+btn_h//2-t.get_height()//2))
-        # Hover
+        # Hover pixelart
         mx, my = pygame.mouse.get_pos()
         for i, y in enumerate(btn_ys):
             if btn_x <= mx <= btn_x+btn_w and y <= my <= y+btn_h:
-                pygame.draw.rect(self.screen, (120,180,255), (btn_x, y, btn_w, btn_h), 4, border_radius=12)
+                pygame.draw.rect(self.screen, (255,255,0), (btn_x, y, btn_w, btn_h), 3)
 
     def _draw_name_input(self):
         self.screen.fill(self.config.BACKGROUND)
-        title = self.big_font.render("Inserisci il tuo nome", True, (30,30,30))
+        title = self.big_font.render("Inserisci il tuo nome", True, (255,255,255))
+        for dx, dy in [(-2,0),(2,0),(0,-2),(0,2)]:
+            self.screen.blit(self.big_font.render("Inserisci il tuo nome", True, (30,30,30)), (self.config.WIDTH//2-title.get_width()//2+dx, 160+dy))
         self.screen.blit(title, (self.config.WIDTH//2-title.get_width()//2, 160))
         box_w, box_h = 340, 60
         box_x = self.config.WIDTH//2 - box_w//2
         box_y = 260
-        pygame.draw.rect(self.screen, (255,255,255), (box_x, box_y, box_w, box_h), border_radius=10)
-        pygame.draw.rect(self.screen, (30,30,30), (box_x, box_y, box_w, box_h), 2, border_radius=10)
+        box = pygame.Rect(box_x, box_y, box_w, box_h)
+        pygame.draw.rect(self.screen, (40,40,60), box)
+        pygame.draw.rect(self.screen, (255,255,255), box, 2)
+        pygame.draw.rect(self.screen, (30,30,30), box, 1)
         name = self.name_input_text if self.name_input_active else self.player_name
-        t = self.font.render(name, True, (30,30,30))
+        t = self.font.render(name, True, (255,255,255))
         self.screen.blit(t, (box_x+20, box_y+box_h//2-t.get_height()//2))
-        hint = self.small_font.render("(max 10 caratteri, premi Invio)", True, (80,80,80))
+        hint = self.small_font.render("(max 10 caratteri, premi Invio)", True, (200,200,200))
         self.screen.blit(hint, (self.config.WIDTH//2-hint.get_width()//2, box_y+box_h+16))
 
     def _draw_grid(self):
@@ -160,58 +184,113 @@ class GameUI:
         for idx, router in enumerate(self.grid.routers):
             row, col = router["row"], router["col"]
             if row >= size or col >= size:
-                continue  # Visualizza solo i router effettivamente nella griglia attiva
+                continue
             x = margin_x + col * cell_w + cell_w//2
             y = margin_y + row * cell_h + cell_h//2
-            # Colore: grigio se non claimato, colore player se claimato dal player locale, arancione se claimato da altri
-            if router["claimed_by"] is None:
-                if router.get("claimed_by_name") and router["claimed_by_name"] != self.config.PLAYER_NAME:
-                    color = (255, 140, 0)  # arancione per router claimati da altri
-                else:
-                    color = self.config.GRAY
-            else:
-                color = self.config.ROUTER_COLORS[router["claimed_by"]]
+            # Ombra pixelart migliorata (sfumatura a gradini)
+            for i in range(4):
+                alpha = 60 - i*12
+                pygame.draw.ellipse(self.screen, (60,60,60,alpha), (x-ROUTER_RADIUS+i*2, y+ROUTER_RADIUS-8+i, ROUTER_RADIUS*2-i*4, 12-i*2))
+            # Router: cerchio pixelart con bordo doppio e effetto dithering
+            router_px = 32
+            surf = pygame.Surface((router_px, router_px), pygame.SRCALPHA)
+            color = (180, 180, 180) if router["claimed_by"] is None else self.config.ROUTER_COLORS[router["claimed_by"]]
+            if router.get("claimed_by_name") and router["claimed_by_name"] != self.config.PLAYER_NAME:
+                color = (255, 140, 0)
+            pygame.draw.circle(surf, color, (router_px//2, router_px//2), router_px//2-2)
+            # Dithering bordo
+            for i in range(0, 360, 12):
+                rad = math.radians(i)
+                dx = int((router_px//2-2)*math.cos(rad))
+                dy = int((router_px//2-2)*math.sin(rad))
+                surf.set_at((router_px//2+dx, router_px//2+dy), (220,220,220))
+            # Bordo doppio
+            border_col = self.config.YELLOW if (row in self.router_goal or col in self.router_goal) else (255,255,255)
+            pygame.draw.circle(surf, border_col, (router_px//2, router_px//2), router_px//2-1, 2)
+            pygame.draw.circle(surf, (30,30,30), (router_px//2, router_px//2), router_px//2, 1)
+            # Glow su hover: alone pixelato
             if self.hovered_router == idx:
-                color = tuple(min(255, c+HOVER_LIGHTEN) for c in color)
-            border_color = self.config.YELLOW if (row in self.router_goal or col in self.router_goal) else (255,255,255)
-            pygame.draw.circle(self.screen, color, (x, y), ROUTER_RADIUS)
-            pygame.draw.circle(self.screen, border_color, (x, y), ROUTER_RADIUS, BORDER_WIDTH)
-            # Interfacce
+                pygame.draw.circle(surf, (255,255,255,80), (router_px//2, router_px//2), router_px//2, 2)
+            # Scala up la superficie per effetto pixelart
+            scale = (ROUTER_RADIUS*2, ROUTER_RADIUS*2)
+            surf_big = pygame.transform.scale(surf, scale)
+            self.screen.blit(surf_big, (x-ROUTER_RADIUS, y-ROUTER_RADIUS))
+            # Interfacce: frecce pixelart con bordo e ombra
             for d, angle in zip(["N","E","S","W"],[270,0,90,180]):
                 iface = router["interfaces"][d]
                 if iface["vlan"] is None:
-                    continue  # Non disegnare la freccia se la vlan non è configurata
-                # Hover: sempre giallo se il mouse è sopra la freccia
+                    continue
+                nrow, ncol = row, col
+                if d == "N": nrow -= 1
+                elif d == "S": nrow += 1
+                elif d == "E": ncol += 1
+                elif d == "W": ncol -= 1
+                if not (0 <= nrow < size and 0 <= ncol < size):
+                    continue
                 if self.hovered_interface == (idx, d):
-                    arrow_col = (200,200,0)
+                    arrow_col = (255, 220, 40)
                 elif iface["up"]:
-                    arrow_col = (0,200,0)
+                    arrow_col = (0, 200, 0)
                 else:
-                    arrow_col = (200,0,0)
-                self._draw_arrow(x, y, angle, arrow_col)
-            # Hostname box on hover
+                    arrow_col = (220, 0, 0)
+                # Ombra freccia
+                arrow_len = 32
+                arrow_w = 8
+                rad = math.radians(angle)
+                cx = x + int(math.cos(rad)*(ROUTER_RADIUS-24))
+                cy = y + int(math.sin(rad)*(ROUTER_RADIUS-24))
+                dx = int(math.cos(rad)*arrow_len)
+                dy = int(math.sin(rad)*arrow_len)
+                rect = pygame.Rect(cx-arrow_w//2+2, cy-arrow_w//2+2, arrow_len, arrow_w)
+                rect.center = (cx+dx//2+2, cy+dy//2+2)
+                pygame.draw.rect(self.screen, (40,40,40), rect)
+                # Freccia pixelart: rettangolo + triangolo
+                rect = pygame.Rect(cx-arrow_w//2, cy-arrow_w//2, arrow_len, arrow_w)
+                rect.center = (cx+dx//2, cy+dy//2)
+                pygame.draw.rect(self.screen, arrow_col, rect)
+                # Punta
+                tip = (cx+dx, cy+dy)
+                base1 = (cx+dx-arrow_w*math.sin(rad), cy+dy+arrow_w*math.cos(rad))
+                base2 = (cx+dx+arrow_w*math.sin(rad), cy+dy-arrow_w*math.cos(rad))
+                pygame.draw.polygon(self.screen, (40,40,40), [tuple(map(int, p)) for p in [tip, base1, base2]])
+                pygame.draw.polygon(self.screen, arrow_col, [tuple(map(int, p)) for p in [tip, base1, base2]])
+            # Hostname box pixelart con bordo doppio
             if self.hovered_router == idx:
-                self._draw_hostname_box(x, y+ROUTER_RADIUS+8, router["hostname"])
+                self._draw_hostname_box_pixel(x, y+ROUTER_RADIUS+8, router["hostname"])
 
-    def _draw_arrow(self, x, y, angle, color):
-        # Disegna una freccia spessa orientata DENTRO il cerchio
+    def _draw_hostname_box_pixel(self, x, y, hostname):
+        text = self.font.render(hostname, True, (255,255,255))
+        w, h = text.get_size()
+        box = pygame.Rect(x-w//2-8, y, w+16, h+10)
+        pygame.draw.rect(self.screen, (40,40,60), box)
+        pygame.draw.rect(self.screen, (255,255,255), box, 2)
+        pygame.draw.rect(self.screen, (30,30,30), box, 1)
+        self.screen.blit(text, (x-w//2, y+5))
+
+    def _draw_arrow_aa(self, x, y, angle, color, width=ARROW_WIDTH):
+        # Freccia anti-aliased
         import math
+        import pygame.gfxdraw
         rad = math.radians(angle)
-        # La linea termina prima della punta per non sovrapporsi
-        start_dist = ROUTER_RADIUS - ARROW_SIZE - 8  # 8px di padding dal bordo
-        end_dist = ROUTER_RADIUS - 36  # la linea si ferma ancora più prima della punta
+        start_dist = ROUTER_RADIUS - ARROW_SIZE - 8
+        end_dist = ROUTER_RADIUS - 36
         dx = math.cos(rad)
         dy = math.sin(rad)
-        start = (x + dx * start_dist, y + dy * start_dist)
-        end = (x + dx * end_dist, y + dy * end_dist)
-        pygame.draw.line(self.screen, color, start, end, ARROW_WIDTH)
-        # Punta grande e ben visibile
-        tip = (x + dx * (ROUTER_RADIUS - 18), y + dy * (ROUTER_RADIUS - 18))
+        start = (int(x + dx * start_dist), int(y + dy * start_dist))
+        end = (int(x + dx * end_dist), int(y + dy * end_dist))
+        # Linea principale
+        for w in range(-width//2, width//2+1):
+            ox = int(-dy*w)
+            oy = int(dx*w)
+            pygame.gfxdraw.line(self.screen, start[0]+ox, start[1]+oy, end[0]+ox, end[1]+oy, color)
+        # Punta
+        tip = (int(x + dx * (ROUTER_RADIUS - 18)), int(y + dy * (ROUTER_RADIUS - 18)))
         perp1 = math.radians(angle+150)
-        p1 = (tip[0]+math.cos(perp1)*16, tip[1]+math.sin(perp1)*16)
+        p1 = (int(tip[0]+math.cos(perp1)*16), int(tip[1]+math.sin(perp1)*16))
         perp2 = math.radians(angle-150)
-        p2 = (tip[0]+math.cos(perp2)*16, tip[1]+math.sin(perp2)*16)
-        pygame.draw.polygon(self.screen, color, [tip, p1, p2])
+        p2 = (int(tip[0]+math.cos(perp2)*16), int(tip[1]+math.sin(perp2)*16))
+        pygame.gfxdraw.filled_trigon(self.screen, tip[0], tip[1], p1[0], p1[1], p2[0], p2[1], color)
+        pygame.gfxdraw.aatrigon(self.screen, tip[0], tip[1], p1[0], p1[1], p2[0], p2[1], color)
 
     def _draw_links(self):
         # Linee tratteggiate verdi tra router con neighborship attiva
@@ -247,35 +326,6 @@ class GameUI:
         x = margin_x + router["col"] * cell_w + cell_w//2
         y = margin_y + router["row"] * cell_h + cell_h//2
         return (x, y)
-
-    def _draw_hostname_box(self, x, y, hostname):
-        text = self.font.render(hostname, True, (255,255,255))
-        w, h = text.get_size()
-        box = pygame.Rect(x-w//2-8, y, w+16, h+8)
-        pygame.draw.rect(self.screen, (30,30,30), box, border_radius=6)
-        pygame.draw.rect(self.screen, (255,255,255), box, 2, border_radius=6)
-        self.screen.blit(text, (x-w//2, y+4))
-
-    def _draw_legend(self):
-        # Legenda in basso
-        legend = [
-            (self.config.GRAY, "Router libero"),
-            (self.config.ROUTER_COLORS[0], "Giocatore 1"),
-            (self.config.ROUTER_COLORS[1], "Giocatore 2"),
-            (self.config.ROUTER_COLORS[2], "Giocatore 3"),
-            (self.config.ROUTER_COLORS[3], "Giocatore 4"),
-            ((0,200,0), "Interfaccia up"),
-            ((200,0,0), "Interfaccia down"),
-            ((200,200,0), "Interfaccia non configurata/hover"),
-            ((0,200,0), "Link attivo (neighborship)")
-        ]
-        y = self.config.HEIGHT - 60
-        x = 60
-        for color, label in legend:
-            pygame.draw.rect(self.screen, color, (x, y, 32, 24))
-            text = self.small_font.render(label, True, (30,30,30))
-            self.screen.blit(text, (x+40, y+2))
-            x += 220
 
     def _draw_tokens(self):
         # Stato token e timer SOLO per il giocatore locale (player 0)
@@ -709,3 +759,15 @@ class GameUI:
         idx, d = self._router_at_pos(mouse_pos)
         self.hovered_router = idx
         self.hovered_interface = (idx, d) if (idx is not None and d is not None) else None
+
+    def _draw_hostname_box_glass(self, x, y, hostname):
+        # Box hostname effetto vetro (glassmorphism)
+        text = self.font.render(hostname, True, (255,255,255))
+        w, h = text.get_size()
+        box = pygame.Rect(x-w//2-12, y, w+24, h+14)
+        glass = pygame.Surface((w+24, h+14), pygame.SRCALPHA)
+        glass.fill((80, 80, 120, 120))
+        pygame.draw.rect(glass, (200,200,255,60), glass.get_rect(), border_radius=10)
+        pygame.draw.rect(glass, (255,255,255,120), glass.get_rect(), 2, border_radius=10)
+        self.screen.blit(glass, (x-w//2-12, y))
+        self.screen.blit(text, (x-w//2, y+7))
