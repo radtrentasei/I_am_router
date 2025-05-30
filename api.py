@@ -63,15 +63,24 @@ class APIDriver:
             return False
 
     def set_interface(self, local_id, vlan, up):
-        # Simula attivazione/disattivazione interfaccia logica (VLAN)
+        # Attiva/disattiva interfaccia logica (VLAN) via RESTCONF secondo specifica GDD
         url = f"https://198.18.1.1{local_id}/restconf/data/ietf-interfaces:interfaces/interface=GigabitEthernet1.{vlan}"
-        payload = {"enabled": up}
+        payload = {
+            "interface": [
+                {
+                    "name": f"GigabitEthernet1.{vlan}",
+                    "type": "iana-if-type:ethernetCsmacd",
+                    "enabled": up
+                }
+            ]
+        }
+        print(f"[API DEBUG] INTERFACE PUT {url}\nPayload: {payload}")
         try:
-            resp = requests.patch(url, json=payload, auth=("cisco", "C1sco12345"), headers={"Content-Type": "application/yang-data+json"}, verify=False, timeout=2)
-            self.api_debug_print(url, "PATCH", payload, resp)
+            resp = requests.put(url, json=payload, auth=("cisco", "C1sco12345"), headers={"Content-Type": "application/yang-data+json"}, verify=False, timeout=2)
+            self.api_debug_print(url, "PUT", payload, resp)
             return resp.ok
         except Exception as e:
-            self.api_debug_print(url, "PATCH", payload, str(e))
+            self.api_debug_print(url, "PUT", payload, str(e))
             return False
 
     def api_debug_print(self, endpoint, method, payload, response):

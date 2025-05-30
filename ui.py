@@ -6,9 +6,10 @@ import pygame
 import pygame.gfxdraw
 import math
 
+# Parametri di default per router/interfacce
 ARROW_SIZE = 32
 ARROW_WIDTH = 5
-ROUTER_RADIUS = 48
+ROUTER_RADIUS_BASE = 48
 BORDER_WIDTH = 3
 HOVER_LIGHTEN = 30
 
@@ -81,6 +82,9 @@ class GameUI:
             return
         if self.state == "name":
             self._draw_name_input()
+            return
+        if self.state == "glossary":
+            self._draw_glossary()
             return
         self._draw_grid()
         self._draw_links()
@@ -180,24 +184,49 @@ class GameUI:
         hint = self.small_font.render("(max 10 caratteri, premi Invio)", True, (200,200,200))
         self.screen.blit(hint, (self.config.WIDTH//2-hint.get_width()//2, box_y+box_h+16))
 
+    def _get_adaptive_router_radius(self):
+        # Calcola il raggio del router in base alla dimensione della griglia
+        size = self.grid.size
+        margin_x = 120
+        margin_y = 80
+        cell_w = (self.config.WIDTH - 2*margin_x) // size
+        cell_h = (self.config.HEIGHT - 220) // size
+        # Il router deve stare comodo nella cella, lasciando spazio per interfacce e box hostname
+        r = min(cell_w, cell_h) // 2 - 18
+        return max(18, min(r, 48))  # Limite minimo/massimo
+
+    def _get_adaptive_interface_size(self):
+        """
+        Restituisce (lunghezza, larghezza) del rettangolo interfaccia in base alla dimensione della griglia.
+        Le interfacce devono essere proporzionate rispetto al router e alla cella, per evitare accavallamenti.
+        """
+        size = self.grid.size
+        margin_x = 120
+        margin_y = 80
+        cell_w = (self.config.WIDTH - 2*margin_x) // size
+        cell_h = (self.config.HEIGHT - 220) // size
+        router_radius = self._get_adaptive_router_radius()
+        # La lunghezza dell'interfaccia deve essere circa metà del diametro del router, ma non più lunga del 60% della cella
+        rect_len = min(int(router_radius * 1.2), int(min(cell_w, cell_h) * 0.6))
+        rect_w = max(10, int(router_radius * 0.35))  # Spessore proporzionale
+        return rect_len, rect_w
+
     def _draw_grid(self):
         size = self.grid.size
         margin_x = 120
         margin_y = 80
         cell_w = (self.config.WIDTH - 2*margin_x) // size
         cell_h = (self.config.HEIGHT - 220) // size
+        ROUTER_RADIUS = self._get_adaptive_router_radius()
         for idx, router in enumerate(self.grid.routers):
             row, col = router["row"], router["col"]
-            if row >= size or col >= size:
-                continue
             x = margin_x + col * cell_w + cell_w//2
             y = margin_y + row * cell_h + cell_h//2
-            # Ombra pixelart migliorata (sfumatura a gradini)
-            for i in range(4):
-                alpha = 60 - i*12
-                pygame.draw.ellipse(self.screen, (60,60,60,alpha), (x-ROUTER_RADIUS+i*2, y+ROUTER_RADIUS-8+i, ROUTER_RADIUS*2-i*4, 12-i*2))
-            # Router: cerchio pixelart con bordo doppio e effetto dithering
-            router_px = 32
+            # Disegna solo router "visibili" nella griglia corrente
+            if not (0 <= row < size and 0 <= col < size):
+                continue
+            # Router: cerchio con bordo sfumato e glow su hover
+            router_px = ROUTER_RADIUS * 2
             surf = pygame.Surface((router_px, router_px), pygame.SRCALPHA)
             color = (180, 180, 180) if router["claimed_by"] is None else self.config.ROUTER_COLORS[router["claimed_by"]]
             if router.get("claimed_by_name") and router["claimed_by_name"] != self.config.PLAYER_NAME:
@@ -220,7 +249,7 @@ class GameUI:
             scale = (ROUTER_RADIUS*2, ROUTER_RADIUS*2)
             surf_big = pygame.transform.scale(surf, scale)
             self.screen.blit(surf_big, (x-ROUTER_RADIUS, y-ROUTER_RADIUS))
-            # Interfacce: frecce pixelart con bordo e ombra
+            # Interfacce: disegna solo un rettangolo colorato invece della freccia
             for d, angle in zip(["N","E","S","W"],[270,0,90,180]):
                 iface = router["interfaces"][d]
                 if iface["vlan"] is None:
@@ -233,32 +262,25 @@ class GameUI:
                 if not (0 <= nrow < size and 0 <= ncol < size):
                     continue
                 if self.hovered_interface == (idx, d):
-                    arrow_col = (255, 220, 40)
+                    rect_col = (255, 220, 40)
                 elif iface["up"]:
-                    arrow_col = (0, 200, 0)
+                    rect_col = (0, 200, 0)
                 else:
-                    arrow_col = (220, 0, 0)
-                # Ombra freccia
-                arrow_len = 32
-                arrow_w = 8
+                    rect_col = (220, 0, 0)
+                # Calcola la posizione e dimensione del rettangolo interfaccia in modo adattivo
+                rect_len, rect_w = self._get_adaptive_interface_size()
                 rad = math.radians(angle)
                 cx = x + int(math.cos(rad)*(ROUTER_RADIUS-24))
                 cy = y + int(math.sin(rad)*(ROUTER_RADIUS-24))
-                dx = int(math.cos(rad)*arrow_len)
-                dy = int(math.sin(rad)*arrow_len)
-                rect = pygame.Rect(cx-arrow_w//2+2, cy-arrow_w//2+2, arrow_len, arrow_w)
-                rect.center = (cx+dx//2+2, cy+dy//2+2)
-                pygame.draw.rect(self.screen, (40,40,40), rect)
-                # Freccia pixelart: rettangolo + triangolo
-                rect = pygame.Rect(cx-arrow_w//2, cy-arrow_w//2, arrow_len, arrow_w)
-                rect.center = (cx+dx//2, cy+dy//2)
-                pygame.draw.rect(self.screen, arrow_col, rect)
-                # Punta
-                tip = (cx+dx, cy+dy)
-                base1 = (cx+dx-arrow_w*math.sin(rad), cy+dy+arrow_w*math.cos(rad))
-                base2 = (cx+dx+arrow_w*math.sin(rad), cy+dy-arrow_w*math.cos(rad))
-                pygame.draw.polygon(self.screen, (40,40,40), [tuple(map(int, p)) for p in [tip, base1, base2]])
-                pygame.draw.polygon(self.screen, arrow_col, [tuple(map(int, p)) for p in [tip, base1, base2]])
+                dx = int(math.cos(rad)*rect_len//2)
+                dy = int(math.sin(rad)*rect_len//2)
+                rect_center = (cx+dx, cy+dy)
+                rect = pygame.Rect(0, 0, rect_len, rect_w)
+                rect.center = rect_center
+                # Bordo bianco e outline nero
+                pygame.draw.rect(self.screen, (255,255,255), rect.inflate(4,4), border_radius=6)
+                pygame.draw.rect(self.screen, (0,0,0), rect.inflate(8,8), border_radius=8)
+                pygame.draw.rect(self.screen, rect_col, rect, border_radius=6)
             # Hostname box pixelart con bordo doppio
             if self.hovered_router == idx:
                 self._draw_hostname_box_pixel(x, y+ROUTER_RADIUS+8, router["hostname"])
@@ -277,8 +299,8 @@ class GameUI:
         import math
         import pygame.gfxdraw
         rad = math.radians(angle)
-        start_dist = ROUTER_RADIUS - ARROW_SIZE - 8
-        end_dist = ROUTER_RADIUS - 36
+        start_dist = self._get_adaptive_router_radius() - ARROW_SIZE - 8
+        end_dist = self._get_adaptive_router_radius() - 36
         dx = math.cos(rad)
         dy = math.sin(rad)
         start = (int(x + dx * start_dist), int(y + dy * start_dist))
@@ -289,7 +311,7 @@ class GameUI:
             oy = int(dx*w)
             pygame.gfxdraw.line(self.screen, start[0]+ox, start[1]+oy, end[0]+ox, end[1]+oy, color)
         # Punta
-        tip = (int(x + dx * (ROUTER_RADIUS - 18)), int(y + dy * (ROUTER_RADIUS - 18)))
+        tip = (int(x + dx * (self._get_adaptive_router_radius() - 18)), int(y + dy * (self._get_adaptive_router_radius() - 18)))
         perp1 = math.radians(angle+150)
         p1 = (int(tip[0]+math.cos(perp1)*16), int(tip[1]+math.sin(perp1)*16))
         perp2 = math.radians(angle-150)
@@ -302,9 +324,55 @@ class GameUI:
         for link in self.grid.links:
             if link.get("neighborship"):
                 idx1, idx2 = link["router_a"], link["router_b"]
-                pos1 = self._router_pos(idx1)
-                pos2 = self._router_pos(idx2)
-                self._draw_dashed_line(self.screen, (0,200,0), pos1, pos2, 10, 10, 3)
+                r1 = self.grid.routers[idx1]
+                r2 = self.grid.routers[idx2]
+                # Verifica che entrambi i router siano visibili nella griglia
+                size = self.grid.size
+                if not (0 <= r1["row"] < size and 0 <= r1["col"] < size):
+                    continue
+                if not (0 <= r2["row"] < size and 0 <= r2["col"] < size):
+                    continue
+                dx = r2["col"] - r1["col"]
+                dy = r2["row"] - r1["row"]
+                if abs(dx) + abs(dy) != 1:
+                    continue  # solo adiacenti
+                if dx == 1:
+                    d1, d2 = "E", "W"
+                elif dx == -1:
+                    d1, d2 = "W", "E"
+                elif dy == 1:
+                    d1, d2 = "S", "N"
+                else:
+                    d1, d2 = "N", "S"
+                x1, y1 = self._router_pos(idx1)
+                x2, y2 = self._router_pos(idx2)
+                angle_map = {"N":270, "E":0, "S":90, "W":180}
+                a1 = angle_map[d1]
+                a2 = angle_map[d2]
+                rect_len = 36
+                rect_w = 14
+                rad1 = math.radians(a1)
+                rad2 = math.radians(a2)
+                margin = 18
+                offset = (rect_len // 2) + rect_w // 2 + margin
+                start = (
+                    int(x1 + math.cos(rad1)*(self._get_adaptive_router_radius()-24 + offset)),
+                    int(y1 + math.sin(rad1)*(self._get_adaptive_router_radius()-24 + offset))
+                )
+                end = (
+                    int(x2 + math.cos(rad2)*(self._get_adaptive_router_radius()-24 + offset)),
+                    int(y2 + math.sin(rad2)*(self._get_adaptive_router_radius()-24 + offset))
+                )
+                link_color = (0, 200, 0)
+                # Bordo bianco spesso sotto la linea
+                pygame.draw.line(self.screen, (255,255,255), start, end, 10)
+                # Bordo nero sottile
+                pygame.draw.line(self.screen, (0,0,0), start, end, 4)
+                # Linea centrale verde
+                pygame.draw.line(self.screen, link_color, start, end, 6)
+            else:
+                # ...existing code for dashed line if needed...
+                pass
 
     def _draw_dashed_line(self, surf, color, start, end, dash_length, space_length, width):
         # Utility per linee tratteggiate
@@ -338,29 +406,47 @@ class GameUI:
         color = self.config.ROUTER_COLORS[pid]
         x = 60
         y = 32
-        player_name = self.config.PLAYER_NAME if hasattr(self.config, 'PLAYER_NAME') else ""
-        max_width = 120
-        if player_name:
-            display_name = player_name
-            name_text = self.small_font.render(f"Giocatore: {display_name}", True, (30,30,30))
-            while name_text.get_width() > max_width and len(display_name) > 1:
-                display_name = display_name[:-1]
-                name_text = self.small_font.render(f"Giocatore: {display_name}...", True, (30,30,30))
-            self.screen.blit(name_text, (x-10, y-32))
-        pygame.draw.circle(self.screen, color, (x, y), 18)
-        # Token: se tutorial offline, mostra infinito
+        player_name = self.player_name
+        # Prepara testo nome troncato se troppo lungo
+        max_name_len = 16
+        display_name = player_name
+        if len(display_name) > max_name_len:
+            display_name = display_name[:max_name_len-3] + '...'
+        name_text = self.font.render(f"Giocatore: {display_name}", True, (0,0,0))
+        token_text = self.font.render("Token: ", True, (0,0,0))
+        tokens = self.grid.tokens[pid]
+        token_val_text = self.font.render(f"{tokens}", True, (30,30,30))
+        timer = self.grid.token_timers[pid]
+        timer_text = self.small_font.render(f"+1 in {timer}s", True, (80,80,80))
+        # Calcola larghezza box: la maggiore tra box Giocatore e box Token
+        content_w1 = name_text.get_width() + 24
+        content_w2 = token_text.get_width() + token_val_text.get_width() + timer_text.get_width() + 24
+        box_w = max(content_w1, content_w2)
+        box_h = max(name_text.get_height(), token_text.get_height(), token_val_text.get_height()) + 16
+        # Box Giocatore
+        box1_rect = pygame.Rect(x, y, box_w, box_h)
+        pygame.draw.rect(self.screen, (255, 255, 180), box1_rect)
+        pygame.draw.rect(self.screen, (255,255,255), box1_rect, 2)
+        pygame.draw.rect(self.screen, (0,0,0), box1_rect, 2)
+        # Testo centrato
+        self.screen.blit(name_text, (box1_rect.x + (box_w - name_text.get_width())//2, box1_rect.y + (box_h - name_text.get_height())//2))
+        # Box Token affiancato
+        box2_rect = pygame.Rect(x + box_w + 24, y, box_w, box_h)
+        pygame.draw.rect(self.screen, (255, 255, 180), box2_rect)
+        pygame.draw.rect(self.screen, (255,255,255), box2_rect, 2)
+        pygame.draw.rect(self.screen, (0,0,0), box2_rect, 2)
+        # Testo Token centrato orizzontalmente
+        total_token_w = token_text.get_width() + token_val_text.get_width() + timer_text.get_width() + 12
+        tx = box2_rect.x + (box_w - total_token_w)//2
+        self.screen.blit(token_text, (tx, box2_rect.y + (box_h - token_text.get_height())//2))
+        tx += token_text.get_width()
+        self.screen.blit(token_val_text, (tx, box2_rect.y + (box_h - token_val_text.get_height())//2))
+        tx += token_val_text.get_width() + 8
+        self.screen.blit(timer_text, (tx, box2_rect.y + (box_h - timer_text.get_height())//2 + 2))
+        # Modalità tutorial: mostra infinito
         if self.glossary.is_in_tutorial():
-            text = self.font.render(f"∞ Token", True, (30,30,30))
-            self.screen.blit(text, (x-8, y-12))
-            ttext = self.small_font.render(f"Modalità tutorial", True, (80,80,80))
-            self.screen.blit(ttext, (x-24, y+18))
-        else:
-            tokens = self.grid.tokens[pid]
-            text = self.font.render(f"{tokens} Token", True, (30,30,30))
-            self.screen.blit(text, (x-8, y-12))
-            timer = self.grid.token_timers[pid]
-            ttext = self.small_font.render(f"+1 in {timer}s", True, (80,80,80))
-            self.screen.blit(ttext, (x-24, y+18))
+            inf_text = self.font.render(f"∞", True, (30,30,30))
+            self.screen.blit(inf_text, (box2_rect.x+box2_rect.width-36, box2_rect.y+4))
 
     def _draw_feedback(self):
         # Messaggio feedback azione
@@ -569,7 +655,12 @@ class GameUI:
                         self.last_feedback = f"Interfaccia {d} {'UP' if up else 'DOWN'}"
                         self.last_feedback_timer = 60
                     else:
-                        self._show_error("Errore API interfaccia")
+                        # Controlla se il fallimento è dovuto a token esauriti
+                        player_id = router["claimed_by"]
+                        if player_id is not None and self.grid.tokens[player_id] <= 0:
+                            self._show_error("Token esauriti! Azione non consentita.")
+                        else:
+                            self._show_error("Errore API interfaccia")
                 else:
                     self._show_error("Claima il router prima!")
         else:
@@ -603,10 +694,15 @@ class GameUI:
                         elif i == 1:
                             self.state = "level"
                         elif i == 2:
-                            self.show_glossary = True
+                            self.state = "glossary"
+                            self.show_glossary = False
                         elif i == 3:
                             self._show_credits()
                         return
+            return
+        if self.state == "glossary":
+            # Chiudi glossario con click
+            self.state = "menu"
             return
         if self.state == "tutorial":
             # Gestione click sui pulsanti Avanti/Indietro/Ripeti step
@@ -681,7 +777,12 @@ class GameUI:
                             self.last_feedback = f"Interfaccia {d} {'UP' if up else 'DOWN'}"
                             self.last_feedback_timer = 60
                         else:
-                            self._show_error("Errore API interfaccia")
+                            # Controlla se il fallimento è dovuto a token esauriti
+                            player_id = router["claimed_by"]
+                            if player_id is not None and self.grid.tokens[player_id] <= 0:
+                                self._show_error("Token esauriti! Azione non consentita.")
+                            else:
+                                self._show_error("Errore API interfaccia")
                     else:
                         self._show_error("Claima il router prima!")
             else:
@@ -704,22 +805,39 @@ class GameUI:
         cell_w = (self.config.WIDTH - 2*margin_x) // size
         cell_h = (self.config.HEIGHT - 220) // size
         mx, my = pos
+        ROUTER_RADIUS = self._get_adaptive_router_radius()
         for idx, router in enumerate(self.grid.routers):
             x = margin_x + router["col"] * cell_w + cell_w//2
             y = margin_y + router["row"] * cell_h + cell_h//2
             dist = math.hypot(mx-x, my-y)
             if dist < ROUTER_RADIUS:
-                # Verifica se su una freccia (solo se vlan configurata)
+                # Verifica se su una interfaccia (rettangolo pixel-art)
                 for d, angle in zip(["N","E","S","W"],[270,0,90,180]):
                     iface = router["interfaces"][d]
                     if iface["vlan"] is None:
                         continue
+                    rect_len, rect_w = self._get_adaptive_interface_size()
                     rad = math.radians(angle)
-                    # Calcola la posizione della punta della freccia come in _draw_arrow
-                    tip_x = x + math.cos(rad) * (ROUTER_RADIUS - 18)
-                    tip_y = y + math.sin(rad) * (ROUTER_RADIUS - 18)
-                    if math.hypot(mx-tip_x, my-tip_y) < 18:
-                        return idx, d
+                    cx = x + int(math.cos(rad)*(ROUTER_RADIUS-24))
+                    cy = y + int(math.sin(rad)*(ROUTER_RADIUS-24))
+                    dx = int(math.cos(rad)*rect_len//2)
+                    dy = int(math.sin(rad)*rect_len//2)
+                    rect_center = (cx+dx, cy+dy)
+                    # Hitbox precisa: creo una superficie temporanea ruotata e controllo il punto
+                    import pygame
+                    surf = pygame.Surface((rect_len, rect_w), pygame.SRCALPHA)
+                    rect = pygame.Rect(0, 0, rect_len, rect_w)
+                    rect.center = (rect_len//2, rect_w//2)
+                    pygame.draw.rect(surf, (255,255,255), rect)
+                    surf_rot = pygame.transform.rotate(surf, -angle)
+                    surf_rect = surf_rot.get_rect(center=rect_center)
+                    if surf_rect.collidepoint(mx, my):
+                        # Controllo anche il pixel alpha per evitare errori ai bordi
+                        local_x = mx - surf_rect.left
+                        local_y = my - surf_rect.top
+                        if 0 <= local_x < surf_rot.get_width() and 0 <= local_y < surf_rot.get_height():
+                            if surf_rot.get_at((int(local_x), int(local_y))).a > 10:
+                                return idx, d
                 return idx, None
         return None, None
 
@@ -769,6 +887,36 @@ class GameUI:
         self.screen.blit(hint, (x+24, y+128))
 
     def handle_key(self, event):
+        # Gestione universale ESC: torna sempre indietro di uno stato
+        if event.key == pygame.K_ESCAPE:
+            if self.input_active:
+                self.input_active = False
+                self.input_text = ""
+                self.input_callback = None
+                self.input_prompt = ""
+                return
+            if self.popup:
+                self.popup = None
+                return
+            if self.show_glossary:
+                self.show_glossary = False
+                return
+            if self.show_tutorial:
+                self.show_tutorial = False
+                self.state = "menu"
+                return
+            if self.state == "game":
+                self.state = "level"
+                return
+            if self.state == "level":
+                self.state = "menu"
+                return
+            if self.state == "name":
+                self.state = "level"
+                return
+            if self.state == "menu":
+                self.state = "splash"
+                return
         if self.state == "splash":
             if event.key == pygame.K_SPACE:
                 self.state = "menu"
@@ -824,3 +972,79 @@ class GameUI:
         pygame.draw.rect(glass, (255,255,255,120), glass.get_rect(), 2, border_radius=10)
         self.screen.blit(glass, (x-w//2-12, y))
         self.screen.blit(text, (x-w//2, y+7))
+
+    def _ask_custom_size(self):
+        # Popup pixel-art per selezione dimensione griglia custom (NxN)
+        # Blocca la UI finché non viene scelto il valore
+        running = True
+        n = 5  # valore iniziale di default
+        min_n, max_n = 2, 8
+        clock = pygame.time.Clock()
+        while running:
+            self.screen.fill(self.config.BACKGROUND)
+            # Popup box
+            w, h = 420, 180
+            x = self.config.WIDTH//2 - w//2
+            y = self.config.HEIGHT//2 - h//2
+            box = pygame.Rect(x, y, w, h)
+            pygame.draw.rect(self.screen, (255,255,255), box, border_radius=14)
+            pygame.draw.rect(self.screen, (30,30,30), box, 3, border_radius=14)
+            # Titolo
+            title = self.font.render("Seleziona dimensione griglia router", True, (30,30,30))
+            self.screen.blit(title, (x + w//2 - title.get_width()//2, y + 24))
+            # Valore N
+            n_box = pygame.Rect(x + w//2 - 40, y + 70, 80, 56)
+            pygame.draw.rect(self.screen, (255,255,180), n_box, border_radius=10)
+            pygame.draw.rect(self.screen, (255,255,255), n_box, 2, border_radius=10)
+            pygame.draw.rect(self.screen, (0,0,0), n_box, 2, border_radius=10)
+            n_text = self.big_font.render(str(n), True, (30,30,30))
+            self.screen.blit(n_text, (n_box.x + n_box.width//2 - n_text.get_width()//2, n_box.y + n_box.height//2 - n_text.get_height()//2))
+            # Pulsanti - e +
+            btn_w, btn_h = 48, 48
+            btn_minus = pygame.Rect(n_box.x - btn_w - 16, n_box.y + 4, btn_w, btn_h)
+            btn_plus = pygame.Rect(n_box.x + n_box.width + 16, n_box.y + 4, btn_w, btn_h)
+            pygame.draw.rect(self.screen, (200,200,255), btn_minus, border_radius=10)
+            pygame.draw.rect(self.screen, (200,255,200), btn_plus, border_radius=10)
+            minus_text = self.big_font.render("-", True, (30,30,30))
+            plus_text = self.big_font.render("+", True, (30,30,30))
+            self.screen.blit(minus_text, (btn_minus.x + btn_w//2 - minus_text.get_width()//2, btn_minus.y + btn_h//2 - minus_text.get_height()//2))
+            self.screen.blit(plus_text, (btn_plus.x + btn_w//2 - plus_text.get_width()//2, btn_plus.y + btn_h//2 - plus_text.get_height()//2))
+            # Pulsante OK
+            ok_w, ok_h = 100, 44
+            ok_box = pygame.Rect(x + w//2 - ok_w//2, y + h - 56, ok_w, ok_h)
+            pygame.draw.rect(self.screen, (255,220,120), ok_box, border_radius=10)
+            ok_text = self.font.render("OK", True, (30,30,30))
+            self.screen.blit(ok_text, (ok_box.x + ok_w//2 - ok_text.get_width()//2, ok_box.y + ok_h//2 - ok_text.get_height()//2))
+            # Aggiorna display
+            pygame.display.flip()
+            # Gestione eventi
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    exit()
+                if event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+                    mx, my = event.pos
+                    if btn_minus.collidepoint(mx, my):
+                        if n > min_n:
+                            n -= 1
+                    elif btn_plus.collidepoint(mx, my):
+                        if n < max_n:
+                            n += 1
+                    elif ok_box.collidepoint(mx, my):
+                        running = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        running = False
+                    elif event.key == pygame.K_LEFT and n > min_n:
+                        n -= 1
+                    elif event.key == pygame.K_RIGHT and n < max_n:
+                        n += 1
+            clock.tick(30)
+        return n
+
+    def _show_credits(self):
+        """
+        Mostra un popup pixel-art con i credits del gioco, stile identico a glossario/tutorial.
+        Chiusura con ESC o click.
+        """
+        self.popup = ("credits", None)

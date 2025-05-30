@@ -199,8 +199,8 @@ Questa regola si applica sia in partita che in modalità tutorial (se non divers
   - Si prende il router con group_id più piccolo (in caso di parità, quello con local_id più piccolo).
   - La VLAN è composta da: 
     - il group_id del router con group_id più piccolo
-    - il local_id più piccolo tra i due router se il link è tra due router dello stesso gruppo seguito dal local_id più grande tra i due router
-    - il local_id più grande tra i due router se il link è tra due router di gruppi diversi seguito dal group_id del router con group_id più piccolo.
+    - il local_id più piccolo tra i due router se il link è tra due router dello stesso gruppo seguito dal local_id più grande tra i due router seguito dal group_id
+    - il local_id più grande tra i due router se il link è tra due router di gruppi diversi seguito dal local_id del secondo router e dal group_id del router con group_id più piccolo.
   - Esempi pratici:
     - Tra un router (1,1) e un router (2,1): VLAN = 112
     - Tra un router (1,1) e un router (3,1): VLAN = 113
@@ -216,6 +216,43 @@ Questa regola si applica sia in partita che in modalità tutorial (se non divers
 - Quando un link viene “attivato” o “disattivato” nel gioco, la relativa sub-interface (es: `GigabitEthernet1.312`) viene abilitata/disabilitata via API.
 - La UI riflette lo stato up/down della VLAN (interfaccia logica/link) con le frecce verdi/rosse.
 - L’identificativo VLAN può essere mostrato a scopo didattico nel glossario o in una schermata avanzata/debug.
+
+### Chiamata API per abilitare/disabilitare una interfaccia (enable/disable)
+- **Endpoint RESTCONF:**
+  - URL: `https://198.18.1.1X/restconf/data/ietf-interfaces:interfaces/interface=GigabitEthernet1.VLAN` dove `X` è il `local_id` del router e `VLAN` è il numero della sub-interface da modificare (es: `GigabitEthernet1.112`).
+  - Autenticazione: Basic Auth (username: `cisco`, password: `C1sco12345`).
+  - Content-Type: `application/yang-data+json`
+  - Metodo: `PUT`
+- **Payload:**
+    - Il payload deve contenere il campo `enabled` impostato a `true` (per abilitare) o `false` (per disabilitare) l'interfaccia.
+    - Esempio di payload per abilitare:
+      ```json
+      {
+        "interface": [
+          {
+            "name": "GigabitEthernet1.112",
+            "type": "iana-if-type:ethernetCsmacd",
+            "enabled": true
+          }
+        ]
+      }
+      ```
+    - Esempio di payload per disabilitare:
+      ```json
+      {
+        "interface": [
+          {
+            "name": "GigabitEthernet1.112",
+            "type": "iana-if-type:ethernetCsmacd",
+            "enabled": false
+          }
+        ]
+      }
+      ```
+- **Esecuzione:**
+  - Quando un giocatore attiva o disattiva una interfaccia tramite la UI, il client invia questa chiamata API per modificare lo stato della sub-interface corrispondente.
+  - Se la chiamata ha successo, lo stato dell'interfaccia viene aggiornato e la UI riflette il nuovo stato (freccia verde o rossa).
+  - Se la chiamata fallisce, viene mostrato un messaggio di errore e lo stato rimane invariato.
 
 **Stato neighborship di routing:**  
 Se una neighborship di routing è attiva su un link, il campo `description` della relativa sub-interface sarà impostato a `UP`.  
@@ -239,5 +276,9 @@ restconf/data/ietf-routing:routing-state/routing-instance
 Questa chiamata restituisce lo stato di routing, inclusa la tabella di routing attuale del router.
 
 > **Nota:** In futuro verranno aggiunti esempi pratici di risposta dell’API e di parsing delle rotte rilevanti.
+
+---
+
+
 
 ---

@@ -25,11 +25,12 @@ Ogni router nella UI viene rappresentato secondo queste regole grafiche:
     - Bordo giallo spesso 3 pixel se router obiettivo già claimato, in pixel-art (doppio bordo)
 - **Interfacce:**
   - Quattro frecce spesse (5px), sprite pixel-art, orientate verso nord, sud, est, ovest, visibili **solo se la VLAN corrispondente è configurata** (cioè esiste un link logico tra router) **e solo se il router adiacente in quella direzione è effettivamente disegnato nella griglia**.
-  - Le frecce sono disegnate **all'interno** del cerchio del router, puntando dal bordo verso il centro.
-  - Colore frecce:
+  - Le frecce sono disegnate in modo che la punta rappresenti il punto di connessione dell'interfaccia logica.
+  - **I link attivi (linee tratteggiate verdi) partono dal simbolo della freccia/interfaccia e non dal centro del router.**
+  - Le frecce sono colorate:
     - Verde (interfaccia up)
     - Rosso (interfaccia down)
-    - **Giallo (hover su interfaccia: quando il mouse passa sopra una freccia, questa viene evidenziata in giallo, indipendentemente dallo stato up/down)**
+    - Giallo (hover su interfaccia: quando il mouse passa sopra una freccia, questa viene evidenziata in giallo, indipendentemente dallo stato up/down)
   - Se la VLAN non è configurata, o il router adiacente non è presente nella griglia, la freccia non viene disegnata (nessuna interfaccia visibile in quella direzione).
   - Le frecce sono disegnate in modo da non sovrapporsi al cerchio del router.
 - **Link attivi:**
@@ -73,6 +74,11 @@ Ogni router nella UI viene rappresentato secondo queste regole grafiche:
   - La legenda UI deve riflettere questa distinzione cromatica.
 
 #### Aggiornamenti e miglioramenti UI (storico changelog integrato)
+
+- Rimossa la chiamata a `update_links()` dalla UI (`ui.py`): la logica di aggiornamento dei link attivi (neighborship) è ora gestita unicamente dalla funzione `update_from_api()` in `router_grid.py`.
+- Non esiste più una funzione `update_links()` in `RouterGrid` e nessuna chiamata a tale funzione è necessaria.
+- L'aggiornamento dello stato dei link (campo `neighborship` nei link) avviene automaticamente durante il polling API, insieme all'aggiornamento delle interfacce.
+- Nessuna modifica visiva o di gameplay per l'utente finale: la sincronizzazione tra interfacce e link resta garantita.
 
 - La visualizzazione dell'hostname nella UI è sempre aggiornata in tempo reale grazie alla chiamata continua di update_from_api().
 - Il box hostname sotto il router mostra sempre il valore aggiornato o '?' se non disponibile, senza ritardi o desincronizzazioni.
@@ -208,10 +214,48 @@ Dove:
 - ↑, ↓ = altre interfacce (colore variabile)
 - [Router2] = hostname letto via API
 
-### Barra superiore con nome giocatore troncato
+### Barra superiore con nome giocatore troncato e token
 
 ```
-Giocatore: SuperLongNa...   Token: ●●●   Timer: 04s
+╔════════════════════════════════════════════════════════════════════╗
+║  [ Giocatore: SuperLongNa... ]  [ Token: 3   +1 in 04s ]         ║
+╠════════════════════════════════════════════════════════════════════╣
+║  Giocatore: Alice      Token: ●●●●   Timer: 08s                  ║
+╠════════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║   [R1]        [R2]        [R3]        [R4]                      ║
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║   [R5]        [R6]        [R7]        [R8]                      ║
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║   [R9]       [R10]       [R11]       [R12]                      ║
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║  [R13]      [R14]      [R15]      [R16]                         ║
+║                                                                  ║
+╚════════════════════════════════════════════════════════════════════╝
+Legenda: ● grigio = router non claimato, ● blu = router claimato dal giocatore locale
+         ↑/→/↓/← verdi = interfaccia up, rosse = interfaccia down, gialle = non configurata
+         [Rx] = hostname del router (o '?' se non disponibile)
+         [Token: N   +1 in XXs] = box token in alto a sinistra, senza cerchio
 ```
 
 ### Legenda in basso
@@ -220,6 +264,7 @@ Giocatore: SuperLongNa...   Token: ●●●   Timer: 04s
 Legenda: ● grigio = router non claimato, ● blu = router claimato dal giocatore locale
          ↑/→/↓/← verdi = interfaccia up, rosse = interfaccia down, gialle = non configurata
          [Rx] = hostname del router (o '?' se non disponibile)
+         [Token: N   +1 in XXs] = box token in alto a sinistra, senza cerchio
 ```
 
 ### Esempio di router con hostname mancante
@@ -234,3 +279,122 @@ Legenda: ● grigio = router non claimato, ● blu = router claimato dal giocato
 ```
 
 ---
+
+### 6.2 Regole dettagliate di disegno: link e interfacce
+
+#### Interfacce (frecce/rette pixel-art)
+- Ogni interfaccia (N, S, E, W) viene rappresentata come un rettangolo colorato (non più una freccia) in stile pixel-art, con:
+  - Colore verde brillante (`(0, 200, 0)`) se l'interfaccia è UP
+  - Colore rosso (`(220, 0, 0)`) se l'interfaccia è DOWN
+  - Colore giallo (`(255, 220, 40)`) se il mouse è in hover su quella interfaccia
+  - Bordo bianco spesso e outline nero per garantire leggibilità su qualsiasi sfondo
+- Il rettangolo dell'interfaccia è disegnato:
+  - Solo se la VLAN è configurata (cioè esiste un link logico tra router)
+  - Solo se il router adiacente in quella direzione è effettivamente presente nella griglia
+  - Posizionato in modo che non si sovrapponga mai al cerchio del router
+  - Dimensioni tipiche: lunghezza 36px, larghezza 14px, con angolo e posizione calcolati rispetto al centro del router e alla direzione
+- L'effetto hover (giallo) ha priorità su qualsiasi altro stato
+
+#### Link attivi (tra router)
+- I link attivi (neighborship) sono rappresentati da una linea spessa, verde brillante (`(0, 200, 0)`), con:
+  - Bordo bianco spesso (10px) sotto la linea
+  - Bordo nero sottile (4px) sopra il bordo bianco
+  - Linea centrale verde (6px)
+  - Effetto "glow" pixel-art dato dalla sovrapposizione dei bordi
+- La linea parte sempre dal bordo esterno del rettangolo interfaccia di ciascun router, non dal centro del router né dalla punta di una freccia
+- La linea non si sovrappone mai al cerchio/interfaccia del router: viene calcolato un margine visivo (tipicamente 18px) per lasciare spazio tra la linea e il router
+- La linea viene disegnata solo se entrambi i router sono visibili nella griglia
+- La linea è bidirezionale e rappresenta lo stato attivo della connessione (neighborship)
+- Se uno dei due router non è visibile nella griglia, il link non viene disegnato
+- Non sono mai disegnate linee che attraversano o si sovrappongono a router o interfacce
+- Le linee sono sempre orizzontali o verticali (mai diagonali), collegate tra interfacce adiacenti
+
+#### Sintesi delle condizioni di visibilità
+- Un'interfaccia è visibile solo se:
+  - La VLAN è configurata
+  - Il router adiacente è presente nella griglia
+- Un link attivo è visibile solo se:
+  - Entrambi i router sono visibili nella griglia
+  - Esiste una neighborship attiva tra i due router
+
+#### Mockup: dimensione e stile dei box Giocatore e Token
+
+```
+╔════════════════════════════════════════════════════════════════════╗
+║  [ Giocatore: SuperLongNa... ]  [ Token: 3   +1 in 04s ]         ║
+╠════════════════════════════════════════════════════════════════════╣
+║  Giocatore: Alice      Token: ●●●●   Timer: 08s                  ║
+╠════════════════════════════════════════════════════════════════════╣
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║   [R1]        [R2]        [R3]        [R4]                      ║
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║   [R5]        [R6]        [R7]        [R8]                      ║
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║   [R9]       [R10]       [R11]       [R12]                      ║
+║                                                                  ║
+║      ↑           ↑           ↑           ↑                       ║
+║    ┌───┐       ┌───┐       ┌───┐       ┌───┐                     ║
+║ ← │ ● │ →   ← │ ● │ →   ← │ ● │ →   ← │ ● │ →                   ║
+║    └───┘       └───┘       └───┘       └───┘                     ║
+║      ↓           ↓           ↓           ↓                       ║
+║  [R13]      [R14]      [R15]      [R16]                         ║
+║                                                                  ║
+╚════════════════════════════════════════════════════════════════════╝
+Legenda: ● grigio = router non claimato, ● blu = router claimato dal giocatore locale
+         ↑/→/↓/← verdi = interfaccia up, rosse = interfaccia down, gialle = non configurata
+         [Rx] = hostname del router (o '?' se non disponibile)
+         [Token: N   +1 in XXs] = box token in alto a sinistra, senza cerchio
+```
+
+- Entrambi i box devono avere la stessa larghezza e altezza, stile e padding:
+- Esempio di mockup con box identici (stessa dimensione, font, bordo, padding):
+
+```
+╔════════════════════════════════════════════════════════════════════╗
+║  ┌────────────────────────────┐  ┌────────────────────────────┐  ║
+║  │ Giocatore: SuperLongNa...  │  │ Token: 3   +1 in 04s      │  ║
+║  └────────────────────────────┘  └────────────────────────────┘  ║
+╠════════════════════════════════════════════════════════════════════╣
+```
+
+- I due box sono affiancati, con la stessa larghezza (adattiva, ma identica), stessa altezza, stesso bordo doppio, stesso font e padding.
+- Il testo all'interno è centrato verticalmente e orizzontalmente.
+- Il box Token non ha più il cerchio, solo testo e countdown integrato.
+- Se il nome giocatore è troppo lungo, viene troncato con '...'.
+- Il layout si adatta alla larghezza della finestra, ma i due box restano sempre identici come dimensione e stile.
+
+Aggiornare la UI e la logica di disegno per garantire che i due box siano sempre identici in dimensione e stile, come da mockup sopra.
+
+## 6.3 Modalità Custom: selezione numero router
+
+- Oltre alle modalità predefinite (4x4, 5x5, 6x6), il gioco offre una modalità **Custom**.
+- In modalità Custom, il giocatore può scegliere la dimensione della griglia di router (NxN) tramite un popup o selettore numerico prima di iniziare la partita.
+- La UI mostra un popup pixel-art che permette di selezionare un valore N compreso tra 2 e 8 (inclusi), con pulsanti + e - oppure un campo numerico.
+- Dopo la conferma, la griglia viene generata con NxN router e tutte le regole di visualizzazione, claim, interfacce e link si adattano automaticamente alla nuova dimensione.
+- Tutti i mockup e le regole di disegno restano invariati, ma la griglia si adatta dinamicamente alla dimensione scelta.
+
+### Mockup selezione Custom
+
+```
+╔════════════════════════════════════════════════════════════════════╗
+║  Seleziona dimensione griglia router: [ 5 ]   [-] [+]   OK       ║
+╚════════════════════════════════════════════════════════════════════╝
+```
+
+- Dopo la selezione, la schermata di gioco mostra la griglia NxN scelta dal giocatore.
+- Tutte le regole di claim, token, interfacce, link e obiettivi restano valide per qualsiasi dimensione.

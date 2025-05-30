@@ -82,9 +82,9 @@ class RouterGrid:
         return links
 
     def _vlan(self, r1, r2):
-        # Nuova regola:
+        # Regola aggiornata (GDD 27/05/2025):
         # - Se i router sono dello stesso gruppo: VLAN = group_id + local_id min + local_id max
-        # - Se i router sono di gruppi diversi: VLAN = group_id min + local_id min + group_id max
+        # - Se i router sono di gruppi diversi: VLAN = group_id min + local_id max + local_id min
         if r1["group_id"] == r2["group_id"]:
             gid = r1["group_id"]
             lmin = min(r1["local_id"], r2["local_id"])
@@ -92,9 +92,9 @@ class RouterGrid:
             return int(f"{gid}{lmin}{lmax}")
         else:
             gid_min = min(r1["group_id"], r2["group_id"])
-            gid_max = max(r1["group_id"], r2["group_id"])
             lmin = min(r1["local_id"], r2["local_id"])
-            return int(f"{gid_min}{lmin}{gid_max}")
+            lmax = max(r1["local_id"], r2["local_id"])
+            return int(f"{gid_min}{lmax}{lmin}")
 
     def _opposite_dir(self, d):
         return {"N":"S", "S":"N", "E":"W", "W":"E"}[d]
@@ -114,11 +114,15 @@ class RouterGrid:
     def set_interface(self, router_idx, direction, up):
         router = self.routers[router_idx]
         vlan = router["interfaces"][direction]["vlan"]
-        if self.tokens[router["claimed_by"]] > 0:
+        player_id = router["claimed_by"]
+        if player_id is not None and self.tokens[player_id] > 0:
             ok = self.api.set_interface(router["local_id"], vlan, up)
             if ok:
                 router["interfaces"][direction]["up"] = up
-                self.tokens[router["claimed_by"]] -= 1
+                self.tokens[player_id] -= 1
+            else:
+                # In caso di errore API, lo stato non viene aggiornato e il token non viene scalato
+                pass
             return ok
         return False
 
@@ -203,9 +207,8 @@ class RouterGrid:
     def set_size(self, size):
         """Imposta la dimensione della griglia e reinizializza lo stato dei router."""
         self.size = size
-        self._init_routers()
-        self._init_links()
-        # Se serve, reinizializza i token qui, ad esempio:
+        self.routers = self._init_routers()
+        self.links = self._init_links()
         if hasattr(self, 'tokens'):
             self.tokens = [self.config.MAX_TOKENS for _ in range(4)]
         if hasattr(self, 'token_timers'):
