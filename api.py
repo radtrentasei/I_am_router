@@ -32,7 +32,7 @@ class APIDriver:
     def _poll_routers(self):
         # Esegue polling su tutti i router reali
         for local_id in range(1, 5):
-            url = f"https://198.18.1.1{local_id}/restconf/data/ietf-interfaces:interfaces"
+            url = f"https://198.18.128.1{local_id}/restconf/data/ietf-interfaces:interfaces"
             try:
                 resp = requests.get(url, auth=("cisco", "C1sco12345"), headers={"Accept": "application/yang-data+json"}, verify=False, timeout=2)
                 self.api_debug_print(url, "GET", None, resp)
@@ -42,7 +42,7 @@ class APIDriver:
                 self.api_debug_print(url, "GET", None, str(e))
 
     def claim_router(self, local_id, group_id, player_name, hostname):
-        url = f"https://198.18.1.1{local_id}/restconf/data/ietf-interfaces:interfaces/interface=Loopback{group_id}"
+        url = f"https://198.18.128.1{local_id}/restconf/data/ietf-interfaces:interfaces/interface=Loopback{group_id}"
         description = f"{player_name}_{hostname}"
         payload = {
             "interface": [
@@ -64,7 +64,7 @@ class APIDriver:
 
     def set_interface(self, local_id, vlan, up):
         # Attiva/disattiva interfaccia logica (VLAN) via RESTCONF secondo specifica GDD
-        url = f"https://198.18.1.1{local_id}/restconf/data/ietf-interfaces:interfaces/interface=GigabitEthernet1.{vlan}"
+        url = f"https://198.18.128.1{local_id}/restconf/data/ietf-interfaces:interfaces/interface=GigabitEthernet1.{vlan}"
         payload = {
             "interface": [
                 {

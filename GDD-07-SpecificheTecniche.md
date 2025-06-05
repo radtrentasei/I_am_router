@@ -20,7 +20,7 @@
 - Gli ID (global_id, local_id, group_id) **non sono visibili nella UI** accanto ai router durante il gioco normale.
 - Quando si clicca su un router, i suoi ID vengono stampati a terminale per scopi di debug e sviluppo.
 - In modalità API, gli ID sono utilizzati per:
-  - Costruire l’indirizzo IP/hostname per la chiamata RESTCONF (es: https://198.18.1.1X dove X è il local_id).
+  - Costruire l’indirizzo IP/hostname per la chiamata RESTCONF (es: https://198.18.128.1X dove X è il local_id).
   - Identificare l’interfaccia LoopbackX (dove X è il group_id) per recuperare l’hostname dinamico tramite API.
 - In modalità tutorial, gli ID sono usati solo internamente e non sono mai mostrati all’utente.
 
@@ -75,7 +75,7 @@ Il client del gioco interagisce con i router reali tramite API RESTCONF, utilizz
   - Il claim dei router è determinato dal parsing del campo description della loopback, in formato `nomegiocatore_hostnameRouterVirtuale`, e sincronizzato tra tutti i client tramite API. Un router con nomegiocatore diverso da quello locale è sempre considerato non claimato dal client locale.
 ### Chiamata API per hostname
 - **Endpoint RESTCONF:**
-  - URL: `https://198.18.1.1X/restconf/data/ietf-interfaces:interfaces` dove `X` è il `local_id` del router selezionato.
+  - URL: `https://198.18.128.1X/restconf/data/ietf-interfaces:interfaces` dove `X` è il `local_id` del router selezionato.
   - Autenticazione: Basic Auth (username: `cisco`, password: `C1sco12345`).
   - Content-Type: `application/yang-data+json`
 - **Logica di ricerca hostname:**
@@ -83,7 +83,7 @@ Il client del gioco interagisce con i router reali tramite API RESTCONF, utilizz
   - Il campo `description` di questa interfaccia viene utilizzato come hostname da mostrare nella UI.
 - **Esempio di chiamata:**
   - Per un router con `local_id=3` e `group_id=2`:
-    - URL: `https://198.18.1.13/restconf/data/ietf-interfaces:interfaces`
+    - URL: `https://198.18.128.13/restconf/data/ietf-interfaces:interfaces`
     - Si cerca l'interfaccia `Loopback2` e si legge il campo `description`.
 - **Fallback:**
   - Se la chiamata fallisce o l'interfaccia non è presente, viene mostrato un hostname di default (`?`) oppure l'ultimo valore di hostname disponibile.
@@ -98,7 +98,7 @@ Questa logica consente di visualizzare in tempo reale l'hostname configurato rea
   - Questa interfaccia viene utilizzata per identificare il router e impostare l'hostname.
 ### Chiamata API per impostare hostname
 - **Endpoint RESTCONF:**
-  - URL: `https://198.18.1.1X/restconf/data/ietf-interfaces:interfaces/interface=LoopbackY`
+  - URL: `https://198.18.128.1X/restconf/data/ietf-interfaces:interfaces/interface=LoopbackY`
   - Autenticazione: Basic Auth (username: `cisco`, password: `C1sco12345`).
   - Content-Type: `application/yang-data+json`
   - metodo: 'PUT'
@@ -118,7 +118,7 @@ Questa logica consente di visualizzare in tempo reale l'hostname configurato rea
         ```
 - **Esempio di chiamata:**
   - Per un router con `local_id=3` e `group_id=2`, per impostare l'hostname a `Alice_Router`:
-    - URL: `https://198.18.1.13/restconf/data/ietf-interfaces:interfaces/interface=Loopback2`
+    - URL: `https://198.18.128.13/restconf/data/ietf-interfaces:interfaces/interface=Loopback2`
 - **Esecuzione:**
   - Quando un giocatore effettua il claim di un router, il client invia questa chiamata API per impostare l'hostname.
   - Se la chiamata ha successo, l'hostname viene aggiornato. Non avviene nessuna memorizzazione locale dell'hostname.
@@ -219,7 +219,7 @@ Questa regola si applica sia in partita che in modalità tutorial (se non divers
 
 ### Chiamata API per abilitare/disabilitare una interfaccia (enable/disable)
 - **Endpoint RESTCONF:**
-  - URL: `https://198.18.1.1X/restconf/data/ietf-interfaces:interfaces/interface=GigabitEthernet1.VLAN` dove `X` è il `local_id` del router e `VLAN` è il numero della sub-interface da modificare (es: `GigabitEthernet1.112`).
+  - URL: `https://198.18.128.1X/restconf/data/ietf-interfaces:interfaces/interface=GigabitEthernet1.VLAN` dove `X` è il `local_id` del router e `VLAN` è il numero della sub-interface da modificare (es: `GigabitEthernet1.112`).
   - Autenticazione: Basic Auth (username: `cisco`, password: `C1sco12345`).
   - Content-Type: `application/yang-data+json`
   - Metodo: `PUT`

@@ -15,7 +15,7 @@ HEADERS = {"Content-Type": "application/yang-data+json"}
 
 def get_interfaces(local_id):
     """Recupera tutte le interfacce esistenti su un router reale."""
-    url = f"https://198.18.1.1{local_id}/restconf/data/ietf-interfaces:interfaces"
+    url = f"https://198.18.128.1{local_id}/restconf/data/ietf-interfaces:interfaces"
     try:
         resp = requests.get(url, auth=AUTH, headers={"Accept": "application/yang-data+json"}, verify=False, timeout=3)
         if resp.ok:
@@ -35,7 +35,7 @@ def reset_loopbacks(local_id, interfaces):
         for iface in interfaces:
             name = iface.get("name", "")
             if name.startswith("Loopback"):
-                url = f"https://198.18.1.1{local_id}/restconf/data/ietf-interfaces:interfaces/interface={name}"
+                url = f"https://198.18.128.1{local_id}/restconf/data/ietf-interfaces:interfaces/interface={name}"
                 payload = {
                     "interface": [
                         {
@@ -55,7 +55,7 @@ def reset_subinterfaces(local_id, interfaces):
         for iface in interfaces:
             name = iface.get("name", "")
             if name.startswith("GigabitEthernet1."):
-                url = f"https://198.18.1.1{local_id}/restconf/data/ietf-interfaces:interfaces/interface={name}"
+                url = f"https://198.18.128.1{local_id}/restconf/data/ietf-interfaces:interfaces/interface={name}"
                 payload = {
                     "interface": [
                         {
