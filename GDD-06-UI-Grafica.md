@@ -19,6 +19,7 @@
 - **Nessun effetto moderno: niente antialias, niente glow, niente gradienti, niente glassmorphism, niente font sans-serif moderno, niente ombre soft.**
 - **Nessuna legenda in-game: tutte le regole di colori e simboli sono documentate solo in questo file.**
 - **Livelli disponibili: Facile (4x4), Medio (5x5), Difficile (6x6), Estremo (8x8).**
+- In modalità Estremo (8x8) le interfacce sono più piccole per garantire leggibilità e coerenza visiva anche con molti router a schermo.
 
 ### 6.1 Dettaglio: Regole di disegno di un router nella UI
 
