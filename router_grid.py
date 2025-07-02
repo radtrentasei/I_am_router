@@ -4,6 +4,7 @@ Gestione della griglia NxN, assegnazione ID, stato router/interfacce, logica VRF
 """
 from utils import generate_ids
 import time
+import threading
 
 class RouterGrid:
     def __init__(self, config, api):
@@ -126,18 +127,34 @@ class RouterGrid:
             return ok
         return False
 
+    def claim_router_async(self, router_idx, player_id, hostname, callback=None):
+        def worker():
+            result = self.claim_router(router_idx, player_id, hostname)
+            if callback:
+                callback(result)
+        threading.Thread(target=worker, daemon=True).start()
+
+    def set_interface_async(self, router_idx, direction, up, callback=None):
+        def worker():
+            result = self.set_interface(router_idx, direction, up)
+            if callback:
+                callback(result)
+        threading.Thread(target=worker, daemon=True).start()
+
     def update_from_api(self):
         """
         Aggiorna lo stato del router leggendo hostname e stato claim dalla description della loopback.
         L'hostname è sempre aggiornato in tempo reale dal polling API.
         Il claim è determinato dal parsing della description: solo se il nomegiocatore coincide con quello locale il router è considerato claimato.
+        Se il router è claimato da un altro giocatore, claimed_by_name viene impostato e la UI lo mostra arancione.
         """
         for idx, router in enumerate(self.routers):
             local_id = router["local_id"]
             group_id = router["group_id"]
             data = self.api.poll_data.get(local_id)
-            hostname = "?"  # fallback di default
+            hostname = "?"
             claimed_by = None
+            claimed_by_name = None
             if data:
                 interfaces = data.get("ietf-interfaces:interfaces", {}).get("interface", [])
                 for iface in interfaces:
@@ -145,24 +162,25 @@ class RouterGrid:
                         desc = iface.get("description")
                         if desc is not None and desc != "":
                             hostname = str(desc)
-                            # Parsing: nomegiocatore_hostnameRouterVirtuale
                             parts = hostname.split("_", 1)
                             if len(parts) == 2:
                                 nomegiocatore, routername = parts[0], parts[1]
-                                if routername != "Router":
-                                    router["claimed_by_name"] = nomegiocatore
-                                else:
-                                    router["claimed_by_name"] = None
                                 if nomegiocatore == self.config.PLAYER_NAME and routername != "Router":
                                     claimed_by = 0  # player locale
+                                    claimed_by_name = nomegiocatore
+                                elif routername != "Router":
+                                    claimed_by = 1  # altro player (arancione in UI)
+                                    claimed_by_name = nomegiocatore
                                 else:
                                     claimed_by = None
+                                    claimed_by_name = None
                             else:
-                                router["claimed_by_name"] = None
                                 claimed_by = None
+                                claimed_by_name = None
                         break
             router["hostname"] = hostname
             router["claimed_by"] = claimed_by
+            router["claimed_by_name"] = claimed_by_name
             # Stato interfacce logiche (VLAN)
             if data:
                 interfaces = data.get("ietf-interfaces:interfaces", {}).get("interface", [])

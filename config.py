@@ -22,4 +22,5 @@ class Config:
     BACKGROUND = (245, 245, 245)
     FONT = "freesansbold.ttf"
     PLAYER_NAME = ""  # Nome del giocatore locale, impostato runtime
+    ORANGE = (255, 140, 0)  # arancione per claim altro player
     # ...altre costanti e parametri...
