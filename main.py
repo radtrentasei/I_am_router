@@ -61,8 +61,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-# Gestione modalità custom: popup pixel-art per selezione dimensione griglia
-# (Popup e logica già in ui.py, qui serve solo adattare la griglia)
-# Se la UI imposta grid.size tramite set_size(), la UI e la logica si adattano dinamicamente.
-# Nessuna modifica necessaria qui: la logica custom è demandata a ui.py e RouterGrid.set_size().

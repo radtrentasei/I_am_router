@@ -154,7 +154,7 @@ class GameUI:
         btn_w, btn_h = 260, 60
         btn_x = self.config.WIDTH//2 - btn_w//2
         btn_ys = [240, 320, 400, 480]
-        labels = ["Facile (2x2)", "Medio (3x3)", "Difficile (4x4)", "Custom"]
+        labels = ["Facile (2x2)", "Medio (3x3)", "Difficile (4x4)", "Estremo (8x8)"]
         for i, (y, label) in enumerate(zip(btn_ys, labels)):
             box = pygame.Rect(btn_x, y, btn_w, btn_h)
             pygame.draw.rect(self.screen, (60,60,120), box)
@@ -206,6 +206,7 @@ class GameUI:
         """
         Restituisce (lunghezza, larghezza) del rettangolo interfaccia in base alla dimensione della griglia.
         Le interfacce devono essere proporzionate rispetto al router e alla cella, per evitare accavallamenti.
+        In modalità Estremo (8x8) le interfacce sono più piccole per garantire leggibilità.
         """
         size = self.grid.size
         margin_x = 120
@@ -213,9 +214,12 @@ class GameUI:
         cell_w = (self.config.WIDTH - 2*margin_x) // size
         cell_h = (self.config.HEIGHT - 220) // size
         router_radius = self._get_adaptive_router_radius()
-        # La lunghezza dell'interfaccia deve essere circa metà del diametro del router, ma non più lunga del 60% della cella
-        rect_len = min(int(router_radius * 1.2), int(min(cell_w, cell_h) * 0.6))
-        rect_w = max(10, int(router_radius * 0.35))  # Spessore proporzionale
+        if size >= 8:
+            rect_len = min(int(router_radius * 0.9), int(min(cell_w, cell_h) * 0.45))
+            rect_w = max(6, int(router_radius * 0.22))
+        else:
+            rect_len = min(int(router_radius * 1.2), int(min(cell_w, cell_h) * 0.6))
+            rect_w = max(10, int(router_radius * 0.35))
         return rect_len, rect_w
 
     def _draw_grid(self):
@@ -460,24 +464,19 @@ class GameUI:
             btn_w, btn_h = 260, 60
             btn_x = self.config.WIDTH//2 - btn_w//2
             btn_ys = [240, 320, 400, 480]
-            levels = [2, 3, 4, "custom"]
+            levels = [2, 3, 4, 8]
             mx, my = pos
             for i, y in enumerate(btn_ys):
                 if btn_x <= mx <= btn_x+btn_w and y <= my <= y+btn_h:
-                    if levels[i] == "custom":
-                        self.state = "custom"
-                        # Mostra popup custom (già gestito altrove)
-                    else:
-                        self.grid.set_size(levels[i])
-                        self.state = "game"
+                    self.grid.set_size(levels[i])
+                    self.state = "game"
                     return
 
     def handle_key(self, event):
         # Gestione input tastiera per menu, nome, popup, ecc.
         # Esempio base: ESC per uscire dai popup, ENTER per confermare input
         if self.popup:
-            # Gestione popup custom/modalità
-            # ...gestione popup custom se necessario...
+            # Rimosso: gestione popup custom/modalità
             return
         if self.state == "name":
             if event.key == pygame.K_RETURN:

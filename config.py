@@ -7,7 +7,7 @@ class Config:
     WIDTH = 1680  # aumentato per maggiore spazio
     HEIGHT = 1000  # aumentato per maggiore spazio
     FPS = 60
-    GRID_SIZE = 4  # Default, può essere cambiato per livelli custom
+    GRID_SIZE = 4  # Default
     API_POLL_INTERVAL = 3  # secondi
     TOKEN_RECHARGE_TIME = 10  # secondi
     MAX_TOKENS = 4
