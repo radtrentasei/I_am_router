@@ -15,7 +15,7 @@
 - Ogni azione (claim, abilitazione interfaccia) consuma un token; ogni giocatore inizia con 4 token e ne riceve 1 aggiuntivo **ogni 10 secondi** (timer visibile).
 - L’attivazione di un’interfaccia può portare due router reali a instaurare una sessione di routing chiamata neighborship; la UI mostra visivamente i link attivi tra router con neighborship attiva.
 - Livelli di difficoltà: Facile (4x4), Medio (5x5), Difficile (6x6), Estremo (8x8).
-- In modalità Estremo (8x8) la UI adatta automaticamente la dimensione delle interfacce per garantire leggibilità e usabilità anche con molti router a schermo.
+- In modalità Estremo (8x8) la UI adatta automaticamente la dimensione delle interfacce e aumenta la distanza tra il rettangolo dell'interfaccia e il router per garantire leggibilità e separazione visiva anche con molti router a schermo.
 - Modalità tutorial offline per simulazione locale.
 - La struttura del gioco e la distribuzione dei token sono pensate per incoraggiare la collaborazione: la rete può essere completata solo se i giocatori dialogano e si coordinano, proprio come in una vera squadra di amministratori di rete.
 - La condizione di vittoria viene raggiunta quando almeno uno dei router obiettivo ha la sua tabella di routing configurata correttamente per raggiungere tutte le loopback degli altri router obiettivo del livello.

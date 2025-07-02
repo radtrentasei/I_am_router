@@ -268,9 +268,13 @@ class GameUI:
                 else:
                     rect_col = (220, 0, 0)
                 rect_len, rect_w = self._get_adaptive_interface_size()
+                # Distanza extra in modalità Estremo
+                extra_dist = 0
+                if size >= 8:
+                    extra_dist = int(ROUTER_W * 0.18)  # aumenta la distanza del rettangolo dall'esterno del router
                 rad = math.radians(angle)
-                cx = x + int(math.cos(rad)*(ROUTER_W//2-24))
-                cy = y + int(math.sin(rad)*(ROUTER_H//2-24))
+                cx = x + int(math.cos(rad)*(ROUTER_W//2-24 + extra_dist))
+                cy = y + int(math.sin(rad)*(ROUTER_H//2-24 + extra_dist))
                 dx = int(math.cos(rad)*rect_len//2)
                 dy = int(math.sin(rad)*rect_len//2)
                 rect_center = (cx+dx, cy+dy)
