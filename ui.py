@@ -220,10 +220,10 @@ class GameUI:
 
     def _draw_grid(self):
         size = self.grid.size
-        margin_x = 120
-        margin_y = 80
+        margin_x = 60  # ridotto per più spazio
+        margin_y = 40  # ridotto per più spazio
         cell_w = (self.config.WIDTH - 2*margin_x) // size
-        cell_h = (self.config.HEIGHT - 220) // size
+        cell_h = (self.config.HEIGHT - 160) // size  # meno spazio per barra superiore
         ROUTER_W = ROUTER_H = self._get_adaptive_router_radius() * 2
         for idx, router in enumerate(self.grid.routers):
             row, col = router["row"], router["col"]
@@ -275,8 +275,9 @@ class GameUI:
                 pygame.draw.rect(self.screen, (255,255,255), iface_rect.inflate(4,4))
                 pygame.draw.rect(self.screen, (0,0,0), iface_rect.inflate(8,8))
                 pygame.draw.rect(self.screen, rect_col, iface_rect)
-            # Hostname box sempre visibile sotto ogni router
-            self._draw_hostname_box_pixel(x, y+ROUTER_H//2+8, router["hostname"])
+            # Hostname box visibile solo se il mouse è sopra il router
+            if self.hovered_router == idx:
+                self._draw_hostname_box_pixel(x, y+ROUTER_H//2+8, router["hostname"])
 
     def _draw_player_token_boxes(self):
         # Box Giocatore e Token affiancati, identici, centrati in alto, stile pixel-art
@@ -363,10 +364,10 @@ class GameUI:
 
     def _router_pos(self, idx):
         size = self.grid.size
-        margin_x = 120
-        margin_y = 80
+        margin_x = 60  # uguale a _draw_grid
+        margin_y = 40  # uguale a _draw_grid
         cell_w = (self.config.WIDTH - 2*margin_x) // size
-        cell_h = (self.config.HEIGHT - 220) // size
+        cell_h = (self.config.HEIGHT - 160) // size
         router = self.grid.routers[idx]
         x = margin_x + router["col"] * cell_w + cell_w//2
         y = margin_y + router["row"] * cell_h + cell_h//2
@@ -384,10 +385,10 @@ class GameUI:
         self.hovered_router = None
         self.hovered_interface = None
         size = self.grid.size
-        margin_x = 120
-        margin_y = 80
+        margin_x = 60  # uguale a _draw_grid
+        margin_y = 40  # uguale a _draw_grid
         cell_w = (self.config.WIDTH - 2*margin_x) // size
-        cell_h = (self.config.HEIGHT - 220) // size
+        cell_h = (self.config.HEIGHT - 160) // size
         ROUTER_W = ROUTER_H = self._get_adaptive_router_radius() * 2
         mx, my = mouse_pos
         for idx, router in enumerate(self.grid.routers):
@@ -448,8 +449,11 @@ class GameUI:
             return
         if self.hovered_router is not None and self.state == "game":
             idx = self.hovered_router
-            if self.claim_callback:
-                self.claim_callback(idx)
+            router = self.grid.routers[idx]
+            # Solo se router non è già claimato
+            if router["claimed_by"] is None:
+                if self.claim_callback:
+                    self.claim_callback(idx)
             return
         if self.state == "level":
             # Gestione click sui pulsanti livello
@@ -555,3 +559,7 @@ class GameUI:
         self.screen.blit(prompt_surf, (x+box_w//2-w_prompt//2, y+16))
         text_surf = font.render(display_text, True, (255,255,0))
         self.screen.blit(text_surf, (x+box_w//2-w_text//2, y+24+h_prompt))
+
+    def _show_error(self, msg, duration=90):
+        self.error_msg = msg
+        self.error_timer = duration

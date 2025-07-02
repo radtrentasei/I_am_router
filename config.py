@@ -4,8 +4,8 @@ Contiene parametri di configurazione e costanti globali.
 """
 
 class Config:
-    WIDTH = 1280
-    HEIGHT = 800
+    WIDTH = 1680  # aumentato per maggiore spazio
+    HEIGHT = 1000  # aumentato per maggiore spazio
     FPS = 60
     GRID_SIZE = 4  # Default, può essere cambiato per livelli custom
     API_POLL_INTERVAL = 3  # secondi
