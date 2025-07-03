@@ -80,7 +80,13 @@ class Glossary:
         self.hide_tutorial()
 
     def is_in_tutorial(self):
-        return self.tutorial_offline and self.tutorial_visible
+        return self.tutorial_offline
+
+    def get_current_tutorial_text(self):
+        """Restituisce il testo del tutorial step corrente."""
+        if 0 <= self.current_step < len(self.tutorial_steps):
+            return self.tutorial_steps[self.current_step]
+        return "Tutorial completato!"
 
     def repeat_step(self):
         # Permette di ripetere lo step corrente (può essere usato dalla UI)

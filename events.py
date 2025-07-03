@@ -16,7 +16,7 @@ class EventManager:
         self.input_text = ""
         self.input_callback = None
         self.claim_router_idx = None
-        self.claim_player_id = 0  # Per demo: sempre player 0
+        # Rimosso claim_player_id - ora sempre giocatore locale
 
     def handle(self, event):
         if event.type == pygame.MOUSEBUTTONDOWN:
@@ -33,12 +33,11 @@ class EventManager:
         # Richiede input hostname, poi effettua il claim
         self.claim_router_idx = idx
         def on_hostname_input(hostname):
-            player_id = self.claim_player_id
-            hostname = hostname[:10]
-            ok = self.grid.claim_router(idx, player_id, hostname)
+            hostname = hostname[:10]  # GDD: max 10 caratteri
+            ok = self.grid.claim_router(idx, hostname)
             if ok:
                 self.audio.play("claim")
-                print(f"[DEBUG] Claim router {idx} da player {player_id} hostname={self.grid.config.PLAYER_NAME}_{hostname}")
+                print(f"[DEBUG] Claim router {idx} hostname={self.grid.config.PLAYER_NAME}_{hostname}")
             else:
                 self.ui._show_error("Errore API claim router")
                 print(f"[DEBUG] Claim fallito per router {idx}")

@@ -7,8 +7,8 @@ import math
 import time
 
 # Parametri di default per router/interfacce
-ARROW_SIZE = 32
-ARROW_WIDTH = 5
+INTERFACE_SIZE = 32  # Era ARROW_SIZE
+INTERFACE_WIDTH = 5  # Era ARROW_WIDTH
 ROUTER_RADIUS_BASE = 48
 BORDER_WIDTH = 3
 HOVER_LIGHTEN = 30
@@ -235,14 +235,18 @@ class GameUI:
             y = margin_y + row * cell_h + cell_h//2
             if not (0 <= row < size and 0 <= col < size):
                 continue
-            # Colore router
+            # Colore router secondo GDD-03-Design-UI.md
             if router["claimed_by"] is None:
+                # GDD: Grigio per router libero, non claimato da nessun giocatore
                 color = self.config.GRAY
-            elif router.get("claimed_by_name") == self.config.PLAYER_NAME:
-                color = self.config.ROUTER_COLORS[router["claimed_by"]]
+            elif router["claimed_by"] == 0:
+                # GDD: Blu per router claimato dal giocatore locale
+                color = self.config.ROUTER_COLORS[0]  # Blu del giocatore locale
             else:
-                color = (255, 140, 0)  # arancione per claim altro player
-            # Bordo giallo se router obiettivo
+                # GDD: Arancione per router claimato da altro giocatore
+                color = self.config.ORANGE
+            # GDD: Bordo giallo spesso 3px se router obiettivo 
+            # TODO: Implementare logica corretta basata su (groupID, localID) invece di indici semplici
             border_col = self.config.YELLOW if (row in self.router_goal or col in self.router_goal) else (255,255,255)
             # Rettangolo pixel-art router
             rect = pygame.Rect(x-ROUTER_W//2, y-ROUTER_H//2, ROUTER_W, ROUTER_H)
@@ -283,9 +287,8 @@ class GameUI:
                 pygame.draw.rect(self.screen, (255,255,255), iface_rect.inflate(4,4))
                 pygame.draw.rect(self.screen, (0,0,0), iface_rect.inflate(8,8))
                 pygame.draw.rect(self.screen, rect_col, iface_rect)
-            # Hostname box visibile solo se il mouse è sopra il router
-            if self.hovered_router == idx:
-                self._draw_hostname_box_pixel(x, y+ROUTER_H//2+8, router["hostname"])
+            # GDD: Hostname box sempre visibile sotto ogni router
+            self._draw_hostname_box_pixel(x, y+ROUTER_H//2+8, router["hostname"])
 
     def _draw_player_token_boxes(self):
         # Box Giocatore e Token affiancati, identici, centrati in alto, stile pixel-art
@@ -305,9 +308,9 @@ class GameUI:
         pygame.draw.rect(self.screen, (30,30,30), rect_player, 1)
         t = self.font.render(label, True, (255,255,255))
         self.screen.blit(t, (rect_player.x+box_w//2-t.get_width()//2, rect_player.y+box_h//2-t.get_height()//2))
-        # Box Token
-        tokens = self.grid.tokens[0] if isinstance(self.grid.tokens, list) else self.grid.tokens.get(0, 0)
-        countdown = self.grid.token_timers[0] if hasattr(self.grid, 'token_timers') else 0
+        # Box Token - GDD: Solo token del giocatore locale
+        tokens = self.grid.tokens  # Ora è un singolo valore, non array
+        countdown = self.grid.token_timer  # Ora è un singolo valore
         token_text = f"Token: {tokens}"
         if countdown > 0:
             token_text += f"   +1 in {countdown}s"
@@ -442,7 +445,9 @@ class GameUI:
             router = self.grid.routers[idx]
             player_id = router["claimed_by"]
             # Solo se claimato dal player locale e token > 0
-            if player_id is not None and self.config.PLAYER_NAME == router.get("claimed_by_name") and self.grid.tokens[player_id] > 0:
+            if (router["claimed_by"] == 0 and 
+                self.config.PLAYER_NAME == router.get("claimed_by_name") and 
+                self.grid.tokens > 0):
                 up = router["interfaces"][direction]["up"]
                 def feedback_cb(ok):
                     if ok:
@@ -458,10 +463,16 @@ class GameUI:
         if self.hovered_router is not None and self.state == "game":
             idx = self.hovered_router
             router = self.grid.routers[idx]
-            # Solo se router non è già claimato
-            if router["claimed_by"] is None:
+            # GDD: Controllo regole di claimabilità
+            if router["claimed_by"] is None and router["hostname"] == "Router":
                 if self.claim_callback:
                     self.claim_callback(idx)
+            else:
+                # GDD: Mostra errore se il router non è claimabile
+                if router["claimed_by"] is not None:
+                    self._show_error("Router già claimato!")
+                elif router["hostname"] != "Router":
+                    self._show_error("Claim possibile solo su router liberi (hostname 'Router')!")
             return
         if self.state == "level":
             # Gestione click sui pulsanti livello
@@ -475,6 +486,60 @@ class GameUI:
                     self.grid.set_size(levels[i])
                     self.state = "game"
                     return
+        
+        if self.state == "menu":
+            # GDD: Gestione click sui pulsanti del menu principale
+            btn_w, btn_h = 320, 60
+            btn_x = self.config.WIDTH//2 - btn_w//2
+            btn_ys = [220, 310, 400, 490]
+            # labels = ["Tutorial", "Play the game", "Glossario", "Credits"]
+            mx, my = pos
+            for i, y in enumerate(btn_ys):
+                if btn_x <= mx <= btn_x+btn_w and y <= my <= y+btn_h:
+                    if i == 0:  # Tutorial
+                        self.state = "tutorial"
+                        self.glossary.show_tutorial()
+                        self.glossary.tutorial_offline = True
+                    elif i == 1:  # Play the game
+                        self.state = "name"
+                    elif i == 2:  # Glossario
+                        self.state = "glossary"
+                    elif i == 3:  # Credits
+                        pass  # Per ora non implementato
+                    return
+        
+        if self.state == "tutorial":
+            # GDD: Gestione click sui pulsanti del tutorial
+            box_w, box_h = 800, 400
+            box_x = self.config.WIDTH//2 - box_w//2
+            box_y = 150
+            btn_w, btn_h = 120, 40
+            btn_y = box_y + box_h + 20
+            
+            mx, my = pos
+            
+            # Pulsante Indietro
+            prev_x = box_x
+            prev_btn = pygame.Rect(prev_x, btn_y, btn_w, btn_h)
+            if prev_btn.collidepoint(mx, my):
+                self.glossary.prev_tutorial_step()
+                return
+            
+            # Pulsante Avanti
+            next_x = box_x + box_w - btn_w
+            next_btn = pygame.Rect(next_x, btn_y, btn_w, btn_h)
+            if next_btn.collidepoint(mx, my):
+                self.glossary.next_tutorial_step()
+                return
+            
+            # Pulsante Esci
+            exit_x = box_x + box_w//2 - btn_w//2
+            exit_btn = pygame.Rect(exit_x, btn_y, btn_w, btn_h)
+            if exit_btn.collidepoint(mx, my):
+                self.state = "menu"
+                self.glossary.hide_tutorial()
+                self.glossary.tutorial_offline = False
+                return
 
     def handle_key(self, event):
         # Gestione input tastiera per menu, nome, popup, ecc.
@@ -493,7 +558,7 @@ class GameUI:
                     self.name_input_text += event.unicode
         if self.state == "splash":
             if event.key == pygame.K_SPACE:
-                self.state = "name"
+                self.state = "menu"  # GDD: Va al menu principale, non direttamente al nome
             return
         # ...altre logiche di navigazione/menu...
         if self.input_active:
@@ -566,3 +631,86 @@ class GameUI:
     def _show_error(self, msg, duration=90):
         self.error_msg = msg
         self.error_timer = duration
+
+    def _draw_error(self):
+        """GDD: Mostra messaggio di errore in stile pixel-art rosso."""
+        if self.error_msg and self.error_timer > 0:
+            text = self.font.render(self.error_msg, True, (255,255,255))
+            w, h = text.get_size()
+            x = self.config.WIDTH//2 - w//2
+            y = 120  # Sotto i box giocatore/token
+            box = pygame.Rect(x-16, y-8, w+32, h+16)
+            # GDD: Box rosso pixel-art per errori
+            pygame.draw.rect(self.screen, (150, 40, 40), box)
+            pygame.draw.rect(self.screen, (255,100,100), box, 2)
+            pygame.draw.rect(self.screen, (100,20,20), box, 1)
+            self.screen.blit(text, (x, y))
+
+    def _draw_tutorial(self):
+        """GDD: Modalità tutorial offline - implementazione step-by-step."""
+        self.screen.fill(self.config.BACKGROUND)
+        
+        # Titolo tutorial
+        title = self.big_font.render("Tutorial - I am a Router", True, (255,255,255))
+        for dx, dy in [(-2,0),(2,0),(0,-2),(0,2)]:
+            self.screen.blit(self.big_font.render("Tutorial - I am a Router", True, (30,30,30)), 
+                           (self.config.WIDTH//2-title.get_width()//2+dx, 50+dy))
+        self.screen.blit(title, (self.config.WIDTH//2-title.get_width()//2, 50))
+        
+        # Box principale tutorial
+        box_w, box_h = 800, 400
+        box_x = self.config.WIDTH//2 - box_w//2
+        box_y = 150
+        box = pygame.Rect(box_x, box_y, box_w, box_h)
+        pygame.draw.rect(self.screen, (40,40,60), box)
+        pygame.draw.rect(self.screen, (255,255,255), box, 2)
+        pygame.draw.rect(self.screen, (30,30,30), box, 1)
+        
+        # Contenuto del tutorial
+        step_text = self.glossary.get_current_tutorial_text()
+        y_offset = box_y + 30
+        for line in step_text.split('\n'):
+            if line.strip():
+                text = self.font.render(line.strip(), True, (255,255,255))
+                self.screen.blit(text, (box_x + 20, y_offset))
+                y_offset += 30
+        
+        # Pulsanti navigazione
+        btn_w, btn_h = 120, 40
+        btn_y = box_y + box_h + 20
+        
+        # Pulsante Indietro
+        prev_x = box_x
+        prev_btn = pygame.Rect(prev_x, btn_y, btn_w, btn_h)
+        pygame.draw.rect(self.screen, (60,60,120), prev_btn)
+        pygame.draw.rect(self.screen, (255,255,255), prev_btn, 2)
+        prev_text = self.font.render("Indietro", True, (255,255,255))
+        self.screen.blit(prev_text, (prev_x + btn_w//2 - prev_text.get_width()//2, 
+                                   btn_y + btn_h//2 - prev_text.get_height()//2))
+        
+        # Pulsante Avanti
+        next_x = box_x + box_w - btn_w
+        next_btn = pygame.Rect(next_x, btn_y, btn_w, btn_h)
+        pygame.draw.rect(self.screen, (60,120,60), next_btn)
+        pygame.draw.rect(self.screen, (255,255,255), next_btn, 2)
+        next_text = self.font.render("Avanti", True, (255,255,255))
+        self.screen.blit(next_text, (next_x + btn_w//2 - next_text.get_width()//2, 
+                                   btn_y + btn_h//2 - next_text.get_height()//2))
+        
+        # Pulsante Esci
+        exit_x = box_x + box_w//2 - btn_w//2
+        exit_btn = pygame.Rect(exit_x, btn_y, btn_w, btn_h)
+        pygame.draw.rect(self.screen, (120,60,60), exit_btn)
+        pygame.draw.rect(self.screen, (255,255,255), exit_btn, 2)
+        exit_text = self.font.render("Esci", True, (255,255,255))
+        self.screen.blit(exit_text, (exit_x + btn_w//2 - exit_text.get_width()//2, 
+                                   btn_y + btn_h//2 - exit_text.get_height()//2))
+        
+        # Gestione hover sui pulsanti
+        mx, my = pygame.mouse.get_pos()
+        if prev_btn.collidepoint(mx, my):
+            pygame.draw.rect(self.screen, (255,255,0), prev_btn, 3)
+        elif next_btn.collidepoint(mx, my):
+            pygame.draw.rect(self.screen, (255,255,0), next_btn, 3)
+        elif exit_btn.collidepoint(mx, my):
+            pygame.draw.rect(self.screen, (255,255,0), exit_btn, 3)

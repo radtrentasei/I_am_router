@@ -13,9 +13,9 @@ class RouterGrid:
         self.size = config.GRID_SIZE
         self.routers = self._init_routers()
         self.links = self._init_links()
-        self.tokens = {i: config.MAX_TOKENS for i in range(4)}
-        self.token_timers = [0 for _ in range(4)]
-        self.last_token_time = [time.time() for _ in range(4)]
+        self.tokens = self.config.MAX_TOKENS  # Solo giocatore locale (indice 0)
+        self.token_timer = 0
+        self.last_token_time = time.time()
         self.goal_routers = self._goal_routers()
 
     def _init_routers(self):
@@ -32,7 +32,7 @@ class RouterGrid:
                     "local_id": ids[idx]["local_id"],
                     "claimed_by": None,
                     "claimed_by_name": None,
-                    "hostname": "?",
+                    "hostname": "Router",  # GDD: hostname iniziale deve essere "Router"
                     "interfaces": {d: {"up": False, "vlan": None} for d in ["N", "S", "E", "W"]},
                 }
                 routers.append(router)
@@ -100,36 +100,52 @@ class RouterGrid:
     def _opposite_dir(self, d):
         return {"N":"S", "S":"N", "E":"W", "W":"E"}[d]
 
-    def claim_router(self, router_idx, player_id, hostname):
+    def claim_router(self, router_idx, hostname):
+        """
+        GDD: Claim di un router secondo le regole specificate.
+        Solo il giocatore locale può claimare router.
+        """
         router = self.routers[router_idx]
         player_name = self.config.PLAYER_NAME
-        if router["claimed_by"] is None and self.tokens[player_id] > 0:
+        # GDD: Un router può essere claimato solo se claimed_by is None E hostname == 'Router'
+        if (router["claimed_by"] is None and 
+            router["hostname"] == "Router" and 
+            self.tokens > 0):
+            # GDD: Consuma token prima della chiamata API
+            self.tokens -= 1
             ok = self.api.claim_router(router["local_id"], router["group_id"], player_name, hostname)
             if ok:
-                router["claimed_by"] = player_id
+                router["claimed_by"] = 0  # Sempre 0 per giocatore locale
                 router["hostname"] = f"{player_name}_{hostname}"
-                self.tokens[player_id] -= 1  # Consuma token solo se successo
+            else:
+                # GDD: Se la chiamata API fallisce, restituisce il token
+                self.tokens += 1
             return ok
         return False
 
     def set_interface(self, router_idx, direction, up):
+        """
+        GDD: Attiva/disattiva interfaccia solo se il router è claimato dal giocatore locale.
+        """
         router = self.routers[router_idx]
         vlan = router["interfaces"][direction]["vlan"]
-        player_id = router["claimed_by"]
-        if player_id is not None and self.tokens[player_id] > 0:
+        # Solo se claimato dal giocatore locale e ha token
+        if router["claimed_by"] == 0 and self.tokens > 0:
+            # GDD: Consuma token prima della chiamata API
+            self.tokens -= 1
             ok = self.api.set_interface(router["local_id"], vlan, up)
             if ok:
                 router["interfaces"][direction]["up"] = up
-                self.tokens[player_id] -= 1
             else:
-                # In caso di errore API, lo stato non viene aggiornato e il token non viene scalato
-                pass
+                # GDD: Se la chiamata API fallisce, restituisce il token
+                self.tokens += 1
             return ok
         return False
 
-    def claim_router_async(self, router_idx, player_id, hostname, callback=None):
+    def claim_router_async(self, router_idx, hostname, callback=None):
+        """Versione asincrona del claim router."""
         def worker():
-            result = self.claim_router(router_idx, player_id, hostname)
+            result = self.claim_router(router_idx, hostname)
             if callback:
                 callback(result)
         threading.Thread(target=worker, daemon=True).start()
@@ -152,7 +168,7 @@ class RouterGrid:
             local_id = router["local_id"]
             group_id = router["group_id"]
             data = self.api.poll_data.get(local_id)
-            hostname = "?"
+            hostname = "?"  # GDD: "?" se non disponibile dal polling API
             claimed_by = None
             claimed_by_name = None
             if data:
@@ -162,22 +178,26 @@ class RouterGrid:
                         desc = iface.get("description")
                         if desc is not None and desc != "":
                             hostname = str(desc)
-                            parts = hostname.split("_", 1)
-                            if len(parts) == 2:
-                                nomegiocatore, routername = parts[0], parts[1]
-                                if nomegiocatore == self.config.PLAYER_NAME and routername != "Router":
-                                    claimed_by = 0  # player locale
-                                    claimed_by_name = nomegiocatore
-                                elif routername != "Router":
-                                    claimed_by = 1  # altro player (arancione in UI)
-                                    claimed_by_name = nomegiocatore
-                                else:
-                                    claimed_by = None
-                                    claimed_by_name = None
-                            else:
-                                claimed_by = None
-                                claimed_by_name = None
+                            # GDD: parsing del formato nomegiocatore_hostname
+                            if "_" in hostname:
+                                parts = hostname.split("_", 1)
+                                if len(parts) == 2:
+                                    nomegiocatore, routername = parts[0], parts[1]
+                                    # GDD: router claimato dal giocatore locale solo se nomegiocatore coincide
+                                    if nomegiocatore == self.config.PLAYER_NAME:
+                                        claimed_by = 0  # player locale
+                                        claimed_by_name = nomegiocatore
+                                    else:
+                                        # GDD: router claimato da altro giocatore (arancione in UI)
+                                        claimed_by = 1  # altro player 
+                                        claimed_by_name = nomegiocatore
+                        else:
+                            # GDD: Se non c'è description, hostname default è "Router"
+                            hostname = "Router"
                         break
+                else:
+                    # GDD: Se non c'è la loopback, hostname default è "Router"
+                    hostname = "Router"
             router["hostname"] = hostname
             router["claimed_by"] = claimed_by
             router["claimed_by_name"] = claimed_by_name
@@ -201,17 +221,18 @@ class RouterGrid:
                         router["interfaces"][d]["up"] = False
 
     def update_tokens(self):
-        # Ricarica token ogni 10 secondi, massimo 4 per player
+        """
+        GDD: Ricarica token ogni 10 secondi, massimo 4 per il giocatore locale.
+        """
         now = time.time()
-        for pid in range(4):
-            if self.tokens[pid] < 4:
-                elapsed = now - self.last_token_time[pid]
-                if elapsed >= 10:
-                    self.tokens[pid] += 1
-                    self.last_token_time[pid] = now
-                self.token_timers[pid] = max(0, int(10 - elapsed))
-            else:
-                self.token_timers[pid] = 0
+        if self.tokens < self.config.MAX_TOKENS:
+            elapsed = now - self.last_token_time
+            if elapsed >= self.config.TOKEN_RECHARGE_TIME:
+                self.tokens += 1
+                self.last_token_time = now
+            self.token_timer = max(0, int(self.config.TOKEN_RECHARGE_TIME - elapsed))
+        else:
+            self.token_timer = 0
 
     def _goal_routers(self):
         # Esempio: router obiettivo agli angoli
@@ -227,9 +248,9 @@ class RouterGrid:
         self.size = size
         self.routers = self._init_routers()
         self.links = self._init_links()
-        if hasattr(self, 'tokens'):
-            self.tokens = [self.config.MAX_TOKENS for _ in range(4)]
-        if hasattr(self, 'token_timers'):
-            self.token_timers = [0 for _ in range(4)]
+        # Reinizializza token del giocatore locale
+        self.tokens = self.config.MAX_TOKENS
+        self.token_timer = 0
+        self.last_token_time = time.time()
 
     # ...altre funzioni per gestione stato, debug...
